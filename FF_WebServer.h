@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_h
 #define _FFWEBSERVER_h
 
-#include "FF_WebServer.hpp"
+#include <FF_WebServer.hpp>
 #include <LittleFS.h>
 
 // ----- Syslog -----

@@ -276,6 +276,18 @@ WIFI_GOT_IP_CALLBACK(onWifiGotIpCallback) {
 
 /*!
 
+	This routine is called each time MQTT is (re)connected
+
+	\param	none
+	\return	none
+
+*/
+MQTT_CONNECT_CALLBACK(onMqttConnectCallback) {
+	trace_info_P("Entering %s", __func__);
+}
+
+/*!
+
 	This routine is called each time MQTT receives a subscribed topic
 
 	\note	** Take care of long payload that will arrive in multiple packets **
@@ -317,6 +329,7 @@ void setup() {
 	FF_WebServer.setWifiConnectCallback(&onWifiConnectCallback);
 	FF_WebServer.setWifiDisconnectCallback(&onWifiDisconnectCallback);
 	FF_WebServer.setWifiGotIpCallback(&onWifiGotIpCallback);
+	FF_WebServer.setMqttConnectCallback(&onMqttConnectCallback);
 	FF_WebServer.setMqttMessageCallback(&onMqttMessageCallback);
 	// Define additional debug commands
 	FF_WebServer.setHelpCmd("mycmd - This is my user command\r\n");
