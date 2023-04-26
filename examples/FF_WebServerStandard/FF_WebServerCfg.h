@@ -21,5 +21,5 @@
 	#define AP_ENABLE_BUTTON -1								// Button pin to enable AP during startup for configuration. -1 to disable
 	#define AP_ENABLE_TIMEOUT 240							// (Seconds, max 255) If the device can not connect to WiFi it will switch to AP mode after this time. -1 to disable
 	#define DEBUG_FF_WEBSERVER								// Enable internal FF_WebServer debug
-	#define FF_DISABLE_DEFAULT_TRACE						// Disable default trace callback
+	//#define FF_DISABLE_DEFAULT_TRACE						// Disable default trace callback
 #endif
