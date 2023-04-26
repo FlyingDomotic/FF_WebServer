@@ -19,7 +19,7 @@
 */
 
 #define VERSION "1.0.0"										// Version of this code
-#include <FF_Webserver.h>									// Defines associated to FF_WebServer class
+#include <FF_WebServer.h>									// Defines associated to FF_WebServer class
 
 //	User internal data
 //		Declare here user's data needed by user's code
@@ -301,7 +301,7 @@ void setup() {
 	Serial.begin(74880);
 	// Start Little File System
 	LittleFS.begin();
-	// Start FF_WebServer²
+	// Start FF_WebServer
 	FF_WebServer.begin(&LittleFS, VERSION);
 	// Register user's trace callback, if needed
 	#ifdef FF_DISABLE_DEFAULT_TRACE

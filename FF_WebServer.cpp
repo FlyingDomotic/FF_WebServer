@@ -36,6 +36,11 @@ char _Version[] = "2.8.0";
 // ----- Trace -----
 extern trace_declare();
 
+// ----- Remote debug -----
+#ifdef REMOTE_DEBUG
+	extern RemoteDebug Debug;
+#endif
+
 // ----- Web server -----
 
 void connectToMqttTimer(AsyncFFWebServer* self){
@@ -139,6 +144,9 @@ void AsyncFFWebServer::onMqttConnect(bool sessionPresent) {
 	char tempBuffer[100];
 	snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("{\"state\":\"up\",\"version\":\"%s/%s\"}"), userVersion.c_str(), FF_WEBSERVER_VERSION);
 	mqttPublishRaw(mqttWillTopic.c_str(), tempBuffer);
+	if (FF_WebServer.mqttConnectCallback) {
+		FF_WebServer.mqttConnectCallback();
+	}
 }
 
 // Called on MQTT disconnection
@@ -492,8 +500,6 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		_debugShowProfiler = false;
 	#endif
 
-	loadFullConfig();
-
 	uint32_t chipId = 0;
 	// Force client id if empty or starts with "ESP_" and not right chip id
 	char tempBuffer[16];
@@ -844,10 +850,10 @@ bool AsyncFFWebServer::load_user_config(String name, String &value) {
 		return false;
 	}
 
-	String temp;
-	serializeJsonPretty(jsonDoc, temp);
+	value = jsonDoc[name].as<char*>();
+
 	#ifdef DEBUG_FF_WEBSERVER
-		DEBUG_VERBOSE("User config: %s", temp.c_str());
+		DEBUG_VERBOSE("User config: %s=%s", name.c_str(), value.c_str());
 	#endif
 	return true;
 }
@@ -1278,7 +1284,7 @@ void AsyncFFWebServer::handleFileList(AsyncWebServerRequest *request) {
 		output += "{\"type\":\"";
 		output += (isDir) ? "dir" : "file";
 		output += "\",\"name\":\"";
-		output += String(entry.name()).substring(1);
+		output += String(entry.name());
 		output += "\"}";
 		entry.close();
 	}
@@ -2198,6 +2204,7 @@ const char* AsyncFFWebServer::getHostName(void) {
 */
 AsyncFFWebServer& AsyncFFWebServer::setConfigChangedCallback(CONFIG_CHANGED_CALLBACK_SIGNATURE) {
 	this->configChangedCallback = configChangedCallback;
+	this->loadFullConfig();
 	return *this;
 }
 
@@ -2309,6 +2316,19 @@ AsyncFFWebServer& AsyncFFWebServer::setWifiGotIpCallback(WIFI_GOT_IP_CALLBACK_SI
 
 /*!
 
+	Set MQTT connected callback
+
+	\param	None
+	\return	None
+
+*/
+AsyncFFWebServer& AsyncFFWebServer::setMqttConnectCallback(MQTT_CONNECT_CALLBACK_SIGNATURE) {
+	this->mqttConnectCallback = mqttConnectCallback;
+	return *this;
+}
+
+/*!
+
 	Set MQTT message callback
 
 	\param[in]	Address of user routine to be called when an MQTT subscribed message is received
@@ -2399,7 +2419,7 @@ void AsyncFFWebServer::startWifiAP(void) {
 		struct rst_info *rtc_info = system_get_rst_info();
 
 		if (lastCmd == "vars") {
-			trace_info_P("version=%s/%s", userVersion.c_str(), FF_WEBSERVER_VERSION);
+			trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WEBSERVER_VERSION);
 			trace_info_P("uptime=%s",NTP.getUptimeString().c_str());
 			time_t bootTime = NTP.getLastBootTime();
 			trace_info_P("boot=%s %s",NTP.getDateStr(bootTime).c_str(), NTP.getTimeStr(bootTime).c_str());
@@ -2417,26 +2437,26 @@ void AsyncFFWebServer::startWifiAP(void) {
 			byte mac[6];
 			WiFi.macAddress(mac);
 			trace_info_P("MAC=%2x:%2x:%2x:%2x:%2x:%2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-			trace_info_P("configMQTT_Host=%s", configMQTT_Host.c_str());
-			trace_info_P("configMQTT_Port=%d", configMQTT_Port);
-			trace_info_P("configMQTT_ClientID=%s", configMQTT_ClientID.c_str());
-			trace_info_P("configMQTT_User=%s", configMQTT_User.c_str());
-			trace_info_P("configMQTT_Pass=%s", configMQTT_Pass.c_str());
-			trace_info_P("configMQTT_Topic=%s", configMQTT_Topic.c_str());
-			trace_info_P("configMQTT_Interval=%d", configMQTT_Interval);
-			trace_info_P("mqttConnected()=%d", mqttClient.connected());
-			trace_info_P("mqttTest()=%d", mqttTest());
-			trace_info_P("syslogServer=%s", syslogServer.c_str());
-			trace_info_P("syslogPort=%d", syslogPort);
+			trace_info_P("configMQTT_Host=%s", FF_WebServer.configMQTT_Host.c_str());
+			trace_info_P("configMQTT_Port=%d", FF_WebServer.configMQTT_Port);
+			trace_info_P("configMQTT_ClientID=%s", FF_WebServer.configMQTT_ClientID.c_str());
+			trace_info_P("configMQTT_User=%s", FF_WebServer.configMQTT_User.c_str());
+			trace_info_P("configMQTT_Pass=%s", FF_WebServer.configMQTT_Pass.c_str());
+			trace_info_P("configMQTT_Topic=%s", FF_WebServer.configMQTT_Topic.c_str());
+			trace_info_P("configMQTT_Interval=%d", FF_WebServer.configMQTT_Interval);
+			trace_info_P("mqttConnected()=%d", FF_WebServer.mqttClient.connected());
+			trace_info_P("mqttTest()=%d", FF_WebServer.mqttTest());
+			trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
+			trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
 		} else if (lastCmd == "debug") {
-			debugFlag = !debugFlag;
-			trace_info_P("Debug is now %d", debugFlag);
+			FF_WebServer.debugFlag = !FF_WebServer.debugFlag;
+			trace_info_P("Debug is now %d", FF_WebServer.debugFlag);
 		} else if (lastCmd == "trace") {
-			traceFlag = !traceFlag;
-			trace_info_P("Trace is now %d", traceFlag);
+			FF_WebServer.traceFlag = !FF_WebServer.traceFlag;
+			trace_info_P("Trace is now %d", FF_WebServer.traceFlag);
 		} else {
-			if (debugCommandCallback) {
-				debugCommandCallback(lastCmd);
+			if (FF_WebServer.debugCommandCallback) {
+				FF_WebServer.debugCommandCallback(lastCmd);
 			}
 		}
 	}

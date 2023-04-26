@@ -94,6 +94,14 @@ th {
     }
 }
 
-#userconfig label, #userconfig input {
+#userconfig label {
     display: block;
+    font-size: 14px;
+    padding-top: 0.5em;
+    padding-bottom: 0.5em;
+}
+
+#userconfig input {
+    font-size: 14px;
+}
 }

@@ -80,7 +80,6 @@ function createUserConfigForm(myJson) {
         group.entities.forEach(entity => {
             var label = document.createElement('label');
             label.innerHTML = entity.title;
-            fieldset.appendChild(label);
 
             if (entity.tag && entity.tag === 'select') {
                 var select = document.createElement('select');
@@ -92,7 +91,7 @@ function createUserConfigForm(myJson) {
                     opt.innerHTML = o;
                     select.appendChild(opt);
                 });
-                fieldset.appendChild(select);
+                label.appendChild(select);
             } else {
                 var hidden;
                 var input = document.createElement('input');
@@ -117,10 +116,11 @@ function createUserConfigForm(myJson) {
                         }
                     });
                 }
-                fieldset.appendChild(input);
+                label.appendChild(input);
                 if (hidden !== undefined) {
-                    fieldset.insertBefore(hidden, input);
+                    label.insertBefore(hidden, input);
                 }
+            fieldset.appendChild(label);
             }
         });
     });

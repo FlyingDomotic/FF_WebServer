@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.8.0"						// FF WebServer version
+#define FF_WEBSERVER_VERSION "2.9.0"						// FF WebServer version
 #include "FF_WebServerCfg.h"								// Include user #define
 
 #ifdef ARDUINO
@@ -82,6 +82,7 @@
 #define WIFI_CONNECT_CALLBACK_SIGNATURE std::function<void(const WiFiEventStationModeConnected data)> wifiConnectCallback
 #define WIFI_DISCONNECT_CALLBACK_SIGNATURE std::function<void(const WiFiEventStationModeDisconnected data)> wifiDisconnectCallback
 #define WIFI_GOT_IP_CALLBACK_SIGNATURE std::function<void(const WiFiEventStationModeGotIP data)> wifiGotIpCallback
+#define MQTT_CONNECT_CALLBACK_SIGNATURE std::function<void(void)> mqttConnectCallback
 #define MQTT_MESSAGE_CALLBACK_SIGNATURE std::function<void(const char *topic, const char *payload, const AsyncMqttClientMessageProperties properties, const size_t len, const size_t index, const size_t total)> mqttMessageCallback
 
 // Define all callbacks
@@ -94,6 +95,7 @@
 #define WIFI_CONNECT_CALLBACK(routine) void routine(const WiFiEventStationModeConnected data)
 #define WIFI_DISCONNECT_CALLBACK(routine) void routine(const WiFiEventStationModeDisconnected data)
 #define WIFI_GOT_IP_CALLBACK(routine) void routine(const WiFiEventStationModeGotIP data)
+#define MQTT_CONNECT_CALLBACK(routine) void routine(void)
 #define MQTT_MESSAGE_CALLBACK(routine) void routine(const char *topic, const char *payload, const AsyncMqttClientMessageProperties properties, const size_t len, const size_t index, const size_t total)
 
 typedef struct {
@@ -154,6 +156,7 @@ public:
 	AsyncFFWebServer& setWifiConnectCallback(WIFI_CONNECT_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setWifiDisconnectCallback(WIFI_DISCONNECT_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setWifiGotIpCallback(WIFI_GOT_IP_CALLBACK_SIGNATURE);
+	AsyncFFWebServer& setMqttConnectCallback(MQTT_CONNECT_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setMqttMessageCallback(MQTT_MESSAGE_CALLBACK_SIGNATURE);
 
 	bool save_user_config(String name, String value);
@@ -206,6 +209,7 @@ protected:
 	WIFI_CONNECT_CALLBACK_SIGNATURE;
 	WIFI_DISCONNECT_CALLBACK_SIGNATURE;
 	WIFI_GOT_IP_CALLBACK_SIGNATURE;
+	MQTT_CONNECT_CALLBACK_SIGNATURE;
 	MQTT_MESSAGE_CALLBACK_SIGNATURE;
 	String standardHelpCmd = "vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n";
 
@@ -249,8 +253,7 @@ protected:
 	// ----- Debug -----
 	#ifdef REMOTE_DEBUG
 		// ---- Remote debug -----
-		void executeDebugCommand();
-		// Disable serial debug
+		static void executeDebugCommand();
 	#endif
 // ----- Syslog -----
 	#ifdef FF_TRACE_USE_SYSLOG

@@ -245,6 +245,16 @@ Parameters
 Returns
 -	None
 
+### setMqttConnectCallback()
+
+Set MQTT connected callback
+
+Parameters 
+- [in]	Address of user routine to be called when MQTT is connected
+
+Returns
+-	None
+
 ### setMqttMessageCallback()
 
 Set MQTT message callback
@@ -527,6 +537,16 @@ Parameters
 
 Returns
 - true for valid answered by request->send command, false else 
+
+### MQTT_CONNECT_CALLBACK()
+
+This routine is called each time MQTT is (re)connected
+
+Parameters
+- none
+
+Returns
+- none 
 
 ### MQTT_MESSAGE_CALLBACK()
 
