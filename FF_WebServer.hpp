@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.9.0"						// FF WebServer version
+#define FF_WEBSERVER_VERSION "2.9.2"						// FF WebServer version
 #include "FF_WebServerCfg.h"								// Include user #define
 
 #ifdef ARDUINO
@@ -140,7 +140,7 @@ public:
 	void startWifi(void);
 	void startWifiAP(void);
 	void stopWifi(void);
-	char* getWebServerVersion(void);
+	const char* getWebServerVersion(void);
 	String getDeviceName(void);
 	AsyncEventSource _evs = AsyncEventSource("/events");
 	enWifiStatus wifiStatus;
@@ -211,7 +211,6 @@ protected:
 	WIFI_GOT_IP_CALLBACK_SIGNATURE;
 	MQTT_CONNECT_CALLBACK_SIGNATURE;
 	MQTT_MESSAGE_CALLBACK_SIGNATURE;
-	String standardHelpCmd = "vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n";
 
 	// ----- MQTT -----
 	AsyncMqttClient mqttClient;
@@ -228,12 +227,12 @@ protected:
 	bool wifiConnected = false;
 	unsigned long lastDisconnect = 0;
 	boolean mqttTest();
-	void onMqttConnect(bool sessionPresent);
-	void onMqttDisconnect(AsyncMqttClientDisconnectReason disconnectReason);
-	void onMqttSubscribe(uint16_t packetId, uint8_t qos);
-	void onMqttUnsubscribe(uint16_t packetId);
-	void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
-	void onMqttPublish(uint16_t packetId);
+	static void onMqttConnect(bool sessionPresent);
+	static void onMqttDisconnect(AsyncMqttClientDisconnectReason disconnectReason);
+	static void onMqttSubscribe(uint16_t packetId, uint8_t qos);
+	static void onMqttUnsubscribe(uint16_t packetId);
+	static void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total);
+	static void onMqttPublish(uint16_t packetId);
 
 	// Trace callback routine
 	#ifndef FF_DISABLE_DEFAULT_TRACE
@@ -247,8 +246,11 @@ protected:
 
 	// ----- Web server -----
 	void percentDecode(char *src);
-	void loadFullConfig(void);
+	void loadConfig(void);
+	void loadUserConfig(void);
 	void error404(AsyncWebServerRequest *request);
+	bool serverStarted = false;
+	String standardHelpCmd = "vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n";
 
 	// ----- Debug -----
 	#ifdef REMOTE_DEBUG
@@ -277,6 +279,7 @@ protected:
 	strHTTPAuth _httpAuth;
 	FS* _fs;
 	String userVersion = "";
+	String serverVersion = FF_WEBSERVER_VERSION;
 	long wifiDisconnectedSince = 0;
 	String _browserMD5 = "";
 	uint32_t _updateSize = 0;

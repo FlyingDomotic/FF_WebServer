@@ -30,9 +30,6 @@ const char Page_Restart[] PROGMEM = R"=====(
 Please Wait....Configuring and Restarting.
 )=====";
 
-char _Version[] = "2.8.0";
-
-
 // ----- Trace -----
 extern trace_declare();
 
@@ -132,18 +129,19 @@ boolean AsyncFFWebServer::mqttTest() {
 void AsyncFFWebServer::connectToMqtt(void) {
 	// Don't try to connect if mqtt server not yet set (startup is fast ;-)
 	if (mqttInitialized) {
-		trace_debug_P("Connecting to MQTT...");
+		if (FF_WebServer.debugFlag) trace_debug_P("Connecting to MQTT...");
 		mqttClient.connect();
 	}
 }
 
 // Called on MQTT connection
 void AsyncFFWebServer::onMqttConnect(bool sessionPresent) {
-	trace_debug_P("Connected to MQTT, session present: %d", sessionPresent);
+	if (FF_WebServer.debugFlag) trace_debug_P("Connected to MQTT, session present: %d", sessionPresent);
 	// Send a "we're up" message
 	char tempBuffer[100];
-	snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("{\"state\":\"up\",\"version\":\"%s/%s\"}"), userVersion.c_str(), FF_WEBSERVER_VERSION);
-	mqttPublishRaw(mqttWillTopic.c_str(), tempBuffer);
+	snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("{\"state\":\"up\",\"version\":\"%s/%s\"}"), FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
+	FF_WebServer.mqttPublishRaw(FF_WebServer.mqttWillTopic.c_str(), tempBuffer);
+	if (FF_WebServer.debugFlag) trace_debug_P("LWT = %s", tempBuffer);
 	if (FF_WebServer.mqttConnectCallback) {
 		FF_WebServer.mqttConnectCallback();
 	}
@@ -151,20 +149,20 @@ void AsyncFFWebServer::onMqttConnect(bool sessionPresent) {
 
 // Called on MQTT disconnection
 void AsyncFFWebServer::onMqttDisconnect(AsyncMqttClientDisconnectReason disconnectReason) {
-	trace_debug_P("Disconnected from MQTT, reason %d", disconnectReason);
-	if (WiFi.isConnected()) {
-		mqttReconnectTimer.once(250, connectToMqttTimer, this);
+	if (FF_WebServer.debugFlag) trace_debug_P("Disconnected from MQTT, reason %d", disconnectReason);
+	if (WiFi.status() == WL_CONNECTED) {
+		FF_WebServer.mqttReconnectTimer.once(250, connectToMqttTimer, &FF_WebServer);
 	}
 }
 
 // Called after MQTT subscription acknowledgment
 void AsyncFFWebServer::onMqttSubscribe(uint16_t packetId, uint8_t qos) {
-	trace_debug_P("Subscribe done, packetId %d, qos %d", packetId, qos);
+	if (FF_WebServer.debugFlag) trace_debug_P("Subscribe done, packetId %d, qos %d", packetId, qos);
 }
 
 // Called after MQTT unsubscription acknowledgment
 void AsyncFFWebServer::onMqttUnsubscribe(uint16_t packetId) {
-	trace_debug_P("Unsubscribe done, packetId %d", packetId);
+	if (FF_WebServer.debugFlag) trace_debug_P("Unsubscribe done, packetId %d", packetId);
 }
 
 // Called when an MQTT subscribed message is received
@@ -176,15 +174,15 @@ void AsyncFFWebServer::onMqttMessage(char* topic, char* payload, AsyncMqttClient
 	if (len < localSize) localSize = len;					// Maximize len to copy
 	memset(localPayload, '\0', sizeof(localPayload));
 	strncpy(localPayload, payload, localSize);
-	trace_info_P("Received: topic %s, payload %s, len %d, localLen %d, index %d, total %d", topic, localPayload, len, localSize, index, total);
-	if (this->mqttMessageCallback) {
-		this->mqttMessageCallback(topic, payload, properties, len, index, total);
+	if (FF_WebServer.traceFlag) trace_info_P("Received: topic %s, payload %s, len %d, localLen %d, index %d, total %d", topic, localPayload, len, localSize, index, total);
+	if (FF_WebServer.mqttMessageCallback) {
+		FF_WebServer.mqttMessageCallback(topic, payload, properties, len, index, total);
 	}
 }
 
 // Called after full MQTT message sending
 void AsyncFFWebServer::onMqttPublish(uint16_t packetId) {
-	trace_debug_P("Publish done, packetId %d", packetId);
+	if (FF_WebServer.debugFlag) trace_debug_P("Publish done, packetId %d", packetId);
 }
 
 /*!
@@ -214,7 +212,7 @@ bool AsyncFFWebServer::mqttSubscribe (const char *subTopic, const int qos) {
 */
 bool AsyncFFWebServer::mqttSubscribeRaw (const char *topic, const int qos) {
 	bool status = mqttClient.subscribe(topic, qos);
-	trace_debug_P("subscribed to %s, qos=%d, status=%d", topic, qos, status);
+	if (FF_WebServer.debugFlag) trace_debug_P("subscribed to %s, qos=%d, status=%d", topic, qos, status);
 	return status;
 }
 
@@ -246,7 +244,7 @@ void AsyncFFWebServer::mqttPublish (const char *subTopic, const char *value) {
 */
 void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value) {
 	uint16_t packetId = mqttClient.publish(topic, 1, true, value);
-	trace_debug_P("publish %s = %s, packedId %d", topic, value, packetId);
+	if (debugFlag) trace_debug_P("publish %s = %s, packedId %d", topic, value, packetId);
 }
 
 // ----- Domoticz -----
@@ -371,8 +369,8 @@ void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value) {
 #endif
 
 // Called each time system or user config is changed
-void AsyncFFWebServer::loadFullConfig(void) {
-	trace_info_P("Load config");
+void AsyncFFWebServer::loadConfig(void) {
+	if (FF_WebServer.traceFlag) trace_info_P("Load config");
 	load_user_config("MQTTHost", configMQTT_Host);
 	load_user_config("MQTTPass", configMQTT_Pass);
 	load_user_config("MQTTPort", configMQTT_Port);
@@ -382,6 +380,11 @@ void AsyncFFWebServer::loadFullConfig(void) {
 	load_user_config("MQTTInterval", configMQTT_Interval);
 	load_user_config("SyslogServer", syslogServer);
 	load_user_config("SyslogPort", syslogPort);
+}
+
+// Called each time system or user config is changed
+void AsyncFFWebServer::loadUserConfig(void) {
+	if (FF_WebServer.traceFlag) trace_info_P("Load user config");
 	if (configChangedCallback) {
 		configChangedCallback();
 	}
@@ -476,8 +479,64 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		trace_register((void (*)(traceLevel_t, const char*, uint16_t, const char*, const char*))&AsyncFFWebServer::defaultTraceCallback);
 	#endif
 
-  loadFullConfig();
-	
+	loadConfig();
+
+	if (!load_config()) { // Try to load configuration from file system
+		defaultConfig(); // Load defaults if any error
+		_apConfig.APenable = true;
+	}
+
+	loadHTTPAuth();
+
+	// Register Wifi Events
+	onStationModeConnectedHandler = WiFi.onStationModeConnected([this](WiFiEventStationModeConnected data) {
+		this->onWiFiConnected(data);
+	});
+
+
+	onStationModeDisconnectedHandler = WiFi.onStationModeDisconnected([this](WiFiEventStationModeDisconnected data) {
+		this->onWiFiDisconnected(data);
+	});
+
+	onStationModeGotIPHandler = WiFi.onStationModeGotIP([this](WiFiEventStationModeGotIP data) {
+		this->onWiFiConnectedGotIP(data);
+	});
+
+	uint32_t chipId = 0;
+	// Force client id if empty or starts with "ESP_" and not right chip id
+	char tempBuffer[16];
+
+	chipId = ESP.getChipId();
+	snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("ESP_%x"), chipId);
+
+	if ((configMQTT_ClientID == "") || (configMQTT_ClientID.startsWith("ESP_") && strcmp(configMQTT_ClientID.c_str(), tempBuffer))) {
+		configMQTT_ClientID = tempBuffer;
+		FF_WebServer.save_user_config("MQTTClientID", configMQTT_ClientID);
+	}
+
+	WiFi.hostname(_config.deviceName.c_str());
+	if (AP_ENABLE_BUTTON >= 0) {
+		if (_apConfig.APenable) {
+			configureWifiAP(); // Set AP mode if AP button was pressed
+		} else {
+			configureWifi(); // Set WiFi config
+		}
+	} else {
+		configureWifi(); // Set WiFi config
+	}
+
+	// Wait for Wifi up in first 10 seconds of life
+	while ((WiFi.status() != WL_CONNECTED) && (millis() <= 10000)) {
+		yield();
+	}
+
+	trace_debug_P("WiFi status = %d (%sconnected)", WiFi.status(), (WiFi.status() != WL_CONNECTED) ? "NOT ":"");
+
+	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
+		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
+		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
+	}
+
 	#ifdef REMOTE_DEBUG
 		// Initialize RemoteDebug
 		Debug.begin(FF_WebServer.getDeviceName().c_str()); // Initialize the WiFi server
@@ -500,32 +559,15 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		_debugShowProfiler = false;
 	#endif
 
-	uint32_t chipId = 0;
-	// Force client id if empty or starts with "ESP_" and not right chip id
-	char tempBuffer[16];
-
-	chipId = ESP.getChipId();
-	snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("ESP_%x"), chipId);
-
-	if ((configMQTT_ClientID == "") || (configMQTT_ClientID.startsWith("ESP_") && strcmp(configMQTT_ClientID.c_str(), tempBuffer))) {
-		configMQTT_ClientID = tempBuffer;
-		FF_WebServer.save_user_config("MQTTClientID", configMQTT_ClientID);
-	}
-
 	#ifdef FF_TRACE_USE_SYSLOG
 		syslog.server(syslogServer.c_str(), syslogPort);
 		syslog.deviceHostname(FF_WebServer.getDeviceName().c_str());
 		syslog.defaultPriority(LOG_KERN);
 	#endif
 
-	// Wait for Wifi up in first 10 seconds of life
-	while ((!WiFi.isConnected()) && (millis() <= 10000)) {
-		yield();
-	}
-
 	struct rst_info *rtc_info = system_get_rst_info();
 	// Send reset reason
-	trace_info_P("%s V%s/%s starting, reset reason: %x - %s", FF_WebServer.getDeviceName().c_str(), userVersion.c_str(), FF_WEBSERVER_VERSION, rtc_info->reason, ESP.getResetReason().c_str());
+	if (FF_WebServer.traceFlag) trace_info_P("%s V%s/%s starting, reset reason: %x - %s", FF_WebServer.getDeviceName().c_str(), FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str(), rtc_info->reason, ESP.getResetReason().c_str());
 	// In case of software restart, send additional info
 	if (rtc_info->reason == REASON_WDT_RST || rtc_info->reason == REASON_EXCEPTION_RST || rtc_info->reason == REASON_SOFT_WDT_RST) {
 		// If crashed, print exception
@@ -605,41 +647,6 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		DEBUG_VERBOSE("FS File: %s, size: %s", fileName.c_str(), formatBytes(fileSize).c_str());
 	}
 #endif // DEBUG_FF_WEBSERVER
-	if (!load_config()) { // Try to load configuration from file system
-		defaultConfig(); // Load defaults if any error
-		_apConfig.APenable = true;
-	}
-	loadHTTPAuth();
-	//WIFI INIT
-	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
-		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
-		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
-	}
-	// Register wifi Event to control connection LED
-	onStationModeConnectedHandler = WiFi.onStationModeConnected([this](WiFiEventStationModeConnected data) {
-		this->onWiFiConnected(data);
-	});
-
-
-	onStationModeDisconnectedHandler = WiFi.onStationModeDisconnected([this](WiFiEventStationModeDisconnected data) {
-		this->onWiFiDisconnected(data);
-	});
-
-	onStationModeGotIPHandler = WiFi.onStationModeGotIP([this](WiFiEventStationModeGotIP data) {
-		this->onWiFiConnectedGotIP(data);
-	});
-
-
-	WiFi.hostname(_config.deviceName.c_str());
-	if (AP_ENABLE_BUTTON >= 0) {
-		if (_apConfig.APenable) {
-			configureWifiAP(); // Set AP mode if AP button was pressed
-		} else {
-			configureWifi(); // Set WiFi config
-		}
-	} else {
-		configureWifi(); // Set WiFi config
-	}
 	_secondTk.attach(1.0f, (void (*) (void*)) &AsyncFFWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
 
 	AsyncWebServer::begin();
@@ -648,6 +655,8 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	MDNS.begin(_config.deviceName.c_str()); // I've not got this to work. Need some investigation.
 	MDNS.addService("http", "tcp", 80);
 	ConfigureOTA(_httpAuth.wwwPassword.c_str());
+	serverStarted = true;
+	loadUserConfig();
 	DEBUG_VERBOSE("END Setup");
 }
 
@@ -850,7 +859,7 @@ bool AsyncFFWebServer::load_user_config(String name, String &value) {
 		return false;
 	}
 
-	value = jsonDoc[name].as<char*>();
+	value = jsonDoc[name].as<const char*>();
 
 	#ifdef DEBUG_FF_WEBSERVER
 		DEBUG_VERBOSE("User config: %s=%s", name.c_str(), value.c_str());
@@ -1101,7 +1110,7 @@ void AsyncFFWebServer::handle(void) {
 
 	#ifdef FF_TRACE_KEEP_ALIVE
 		if ((millis() - lastTraceMessage) >= FF_TRACE_KEEP_ALIVE) {
-			trace_info_P("I'm still alive...");
+			if (FF_WebServer.traceFlag) trace_info_P("I'm still alive...");
 			// Note that lastTraceMessage is loaded with millis() by trace routine
 		}
 	#endif
@@ -1141,9 +1150,9 @@ void AsyncFFWebServer::configureWifiAP() {
 
 //	Start WiFi client (afte disconnecting AP if needed)
 void AsyncFFWebServer::configureWifi() {
-	//disconnect required here
-	//improves reconnect reliability
-	WiFi.disconnect();
+	if (WiFi.status() == WL_CONNECTED) {
+		WiFi.disconnect();
+	}
 	//encourge clean recovery after disconnect species5618, 08-March-2018
 	WiFi.setAutoReconnect(true);
 	WiFi.mode(WIFI_STA);
@@ -1158,10 +1167,6 @@ void AsyncFFWebServer::configureWifi() {
 
 	connectionTimout = 0;
 	wifiStatus = FS_STAT_CONNECTING;
-
-#if (AP_ENABLE_TIMEOUT <= 0)
-	WiFi.waitForConnectResult();
-#endif //AP_ENABLE_TIMEOUT
 }
 
 // Configure Arduino OTA
@@ -1212,10 +1217,10 @@ void AsyncFFWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
 	byte mac[6];
 	WiFi.macAddress(mac);
 	if (FF_WebServer.lastDisconnect) {
-		trace_info_P("Wifi reconnected to %s after %d seconds, MAC=%2x:%2x:%2x:%2x:%2x:%2x",
+		if (FF_WebServer.traceFlag) trace_info_P("Wifi reconnected to %s after %d seconds, MAC=%2x:%2x:%2x:%2x:%2x:%2x",
 			WiFi.SSID().c_str(), (int)((millis() - FF_WebServer.lastDisconnect) / 1000), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	} else {
-		trace_info_P("Wifi connected to %s, MAC=%2x:%2x:%2x:%2x:%2x:%2x", WiFi.SSID().c_str(), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		if (FF_WebServer.traceFlag) trace_info_P("Wifi connected to %s, MAC=%2x:%2x:%2x:%2x:%2x:%2x", WiFi.SSID().c_str(), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	}
 	WiFi.setAutoReconnect(true);
 	FF_WebServer.wifiConnected = true;
@@ -1417,7 +1422,7 @@ void AsyncFFWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 void AsyncFFWebServer::send_general_configuration_values_html(AsyncWebServerRequest *request) {
 	String values = "";
 	values += "devicename|" + (String)_config.deviceName + "|input\n";
-	values += "userversion|" + String(_Version) + "|div\n";
+	values += "userversion|" + serverVersion + "|div\n";
 	request->send(200, "text/plain", values);
 }
 
@@ -1891,7 +1896,8 @@ void AsyncFFWebServer::post_rest_config(AsyncWebServerRequest *request) {
 	}
 
 	// Reload config
-	loadFullConfig();
+	loadConfig();
+	loadUserConfig();
 	request->redirect(target);
 }
 
@@ -2068,7 +2074,7 @@ void AsyncFFWebServer::serverInit() {
 				return;
 			}
 		}
-		trace_debug_P("Unknown JSON request: %s", request->url().c_str());
+		if (this->debugFlag) trace_debug_P("Unknown JSON request: %s", request->url().c_str());
 		snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("Can't understand: %s\n"), request->url().c_str());
 		request->send(400, "text/plain", tempBuffer);
 	});
@@ -2083,7 +2089,7 @@ void AsyncFFWebServer::serverInit() {
 				return;
 			}
 		}
-		trace_debug_P("Unknown REST request: %s", request->url().c_str());
+		if (this->debugFlag) trace_debug_P("Unknown REST request: %s", request->url().c_str());
 		snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("Can't understand: %s\n"), request->url().c_str());
 		request->send(400, "text/plain", tempBuffer);
 	});
@@ -2100,7 +2106,7 @@ void AsyncFFWebServer::serverInit() {
 				return;
 			}
 		}
-		trace_debug_P("Unknown POST request: %s", request->url().c_str());
+		if (this->debugFlag) trace_debug_P("Unknown POST request: %s", request->url().c_str());
 		snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("Can't understand: %s\n"), request->url().c_str());
 		request->send(400, "text/plain", tempBuffer);
 	});
@@ -2204,7 +2210,9 @@ const char* AsyncFFWebServer::getHostName(void) {
 */
 AsyncFFWebServer& AsyncFFWebServer::setConfigChangedCallback(CONFIG_CHANGED_CALLBACK_SIGNATURE) {
 	this->configChangedCallback = configChangedCallback;
-	this->loadFullConfig();
+	if (serverStarted) {
+		this->loadUserConfig();
+	}
 	return *this;
 }
 
@@ -2360,8 +2368,8 @@ void AsyncFFWebServer::setHelpCmd(const char *helpCommands) {
 	\return	FF_WebServer version
 
 */
-char* AsyncFFWebServer::getWebServerVersion(void) {
-	return _Version;
+const char* AsyncFFWebServer::getWebServerVersion(void) {
+	return serverVersion.c_str();
 }
 
 /*!
@@ -2419,7 +2427,7 @@ void AsyncFFWebServer::startWifiAP(void) {
 		struct rst_info *rtc_info = system_get_rst_info();
 
 		if (lastCmd == "vars") {
-			trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WEBSERVER_VERSION);
+			trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
 			trace_info_P("uptime=%s",NTP.getUptimeString().c_str());
 			time_t bootTime = NTP.getLastBootTime();
 			trace_info_P("boot=%s %s",NTP.getDateStr(bootTime).c_str(), NTP.getTimeStr(bootTime).c_str());
