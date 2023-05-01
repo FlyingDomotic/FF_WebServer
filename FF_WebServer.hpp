@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.9.2"						// FF WebServer version
+#define FF_WEBSERVER_VERSION "2.9.4"						// FF WebServer version
 #include "FF_WebServerCfg.h"								// Include user #define
 
 #ifdef ARDUINO
@@ -242,6 +242,7 @@ protected:
 	// Trace keep alive timer
 	#ifdef FF_TRACE_KEEP_ALIVE
 		unsigned long lastTraceMessage = 0;
+		unsigned long traceKeepAlive = FF_TRACE_KEEP_ALIVE;
 	#endif
 
 	// ----- Web server -----

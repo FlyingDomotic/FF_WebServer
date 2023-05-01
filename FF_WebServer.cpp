@@ -567,7 +567,7 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 
 	struct rst_info *rtc_info = system_get_rst_info();
 	// Send reset reason
-	if (FF_WebServer.traceFlag) trace_info_P("%s V%s/%s starting, reset reason: %x - %s", FF_WebServer.getDeviceName().c_str(), FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str(), rtc_info->reason, ESP.getResetReason().c_str());
+	trace_info_P("%s V%s/%s starting, reset reason: %x - %s", FF_WebServer.getDeviceName().c_str(), FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str(), rtc_info->reason, ESP.getResetReason().c_str());
 	// In case of software restart, send additional info
 	if (rtc_info->reason == REASON_WDT_RST || rtc_info->reason == REASON_EXCEPTION_RST || rtc_info->reason == REASON_SOFT_WDT_RST) {
 		// If crashed, print exception
@@ -1109,8 +1109,8 @@ void AsyncFFWebServer::handle(void) {
 	#endif
 
 	#ifdef FF_TRACE_KEEP_ALIVE
-		if ((millis() - lastTraceMessage) >= FF_TRACE_KEEP_ALIVE) {
-			if (FF_WebServer.traceFlag) trace_info_P("I'm still alive...");
+		if ((millis() - lastTraceMessage) >= traceKeepAlive) {
+			trace_info_P("I'm still alive...");
 			// Note that lastTraceMessage is loaded with millis() by trace routine
 		}
 	#endif
