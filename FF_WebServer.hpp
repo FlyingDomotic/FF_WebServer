@@ -21,8 +21,10 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.9.4"						// FF WebServer version
-#include "FF_WebServerCfg.h"								// Include user #define
+#define FF_WEBSERVER_VERSION "2.9.5"						// FF WebServer version
+#ifndef PLATFORMIO											// Execute this include only for Arduino IDE
+	#include "FF_WebServerCfg.h"							// Include user #define
+#endif
 
 #ifdef ARDUINO
 	#include <Arduino.h>
