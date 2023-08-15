@@ -592,7 +592,6 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		mqttClient.setWill(mqttWillTopic.c_str(), 1, true,	"{\"state\":\"down\"}");
 
 		mqttClient.setServer(configMQTT_Host.c_str(), configMQTT_Port);
-		mqttInitialized = true;
 	} else {
 		trace_error_P("MQTT config error: Host %s Port %d User %s Pass %s Id %s Topic %s Interval %d",
 			configMQTT_Host.c_str(), configMQTT_Port, configMQTT_User.c_str(), configMQTT_Pass.c_str(),
@@ -652,8 +651,9 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	serverStarted = true;
 	loadUserConfig();
 	if (mqttTest()) {
+		mqttInitialized = true;
 		// If Wifi is connected, connect to Mqtt
-		if (wifiConnected) {
+		if (wifiConnected && wifiGotIp) {
 			connectToMqtt();
 		}
 	}
@@ -1224,7 +1224,9 @@ void AsyncFFWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
 	}
 	WiFi.setAutoReconnect(true);
 	FF_WebServer.wifiConnected = true;
-	FF_WebServer.connectToMqtt();
+	if (FF_WebServer.wifiGotIp) {
+		FF_WebServer.connectToMqtt();
+	}
 	if (FF_WebServer.wifiConnectCallback) {
 		FF_WebServer.wifiConnectCallback(data);
 	}
@@ -1238,6 +1240,7 @@ void AsyncFFWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 		digitalWrite(CONNECTION_LED, LOW); // Turn LED on
 		DEBUG_VERBOSE_P("Led %d on", CONNECTION_LED);
 	}
+	FF_WebServer.wifiGotIp = true;
 	FF_WebServer.wifiDisconnectedSince = 0;
 	//force NTPsstart after got ip
 	if (FF_WebServer._config.updateNTPTimeEvery > 0) { // Enable NTP sync
@@ -1245,6 +1248,7 @@ void AsyncFFWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 	}
 	FF_WebServer.connectionTimout = 0;
 	FF_WebServer.wifiStatus = FS_STAT_CONNECTED;
+	FF_WebServer.connectToMqtt();
 	if (FF_WebServer.wifiGotIpCallback) {
 		FF_WebServer.wifiGotIpCallback(data);
 	}

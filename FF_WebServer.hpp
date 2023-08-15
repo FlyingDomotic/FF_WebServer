@@ -230,6 +230,7 @@ protected:
 	String configMQTT_ClientID = "";
 	bool mqttInitialized = false;
 	bool wifiConnected = false;
+	bool wifiGotIp = false;
 	unsigned long lastDisconnect = 0;
 	boolean mqttTest();
 	static void onMqttConnect(bool sessionPresent);
