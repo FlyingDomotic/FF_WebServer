@@ -256,7 +256,7 @@ protected:
 	void loadUserConfig(void);
 	void error404(AsyncWebServerRequest *request);
 	bool serverStarted = false;
-	String standardHelpCmd = "vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n";
+	String standardHelpCmd = "";
 
 	// ----- Debug -----
 	#ifdef REMOTE_DEBUG

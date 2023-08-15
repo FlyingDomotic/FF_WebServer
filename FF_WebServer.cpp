@@ -468,7 +468,7 @@ void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	_fs = fs;
 	userVersion = String(version);
-
+	standardHelpCmd = PSTR("vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n");
 	connectionTimout = 0;
 
 	// ----- Global trace ----
@@ -593,10 +593,6 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 
 		mqttClient.setServer(configMQTT_Host.c_str(), configMQTT_Port);
 		mqttInitialized = true;
-		// If Wifi is connected, connect to Mqtt
-		if (wifiConnected) {
-			connectToMqtt();
-		}
 	} else {
 		trace_error_P("MQTT config error: Host %s Port %d User %s Pass %s Id %s Topic %s Interval %d",
 			configMQTT_Host.c_str(), configMQTT_Port, configMQTT_User.c_str(), configMQTT_Pass.c_str(),
@@ -655,6 +651,12 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	ConfigureOTA(_httpAuth.wwwPassword.c_str());
 	serverStarted = true;
 	loadUserConfig();
+	if (mqttTest()) {
+		// If Wifi is connected, connect to Mqtt
+		if (wifiConnected) {
+			connectToMqtt();
+		}
+	}
 	DEBUG_VERBOSE_P("END Setup");
 }
 
