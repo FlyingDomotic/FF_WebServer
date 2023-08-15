@@ -64,10 +64,13 @@
 
 #ifdef DEBUG_FF_WEBSERVER
 	#define DEBUG_VERBOSE(...) trace_verbose(__VA_ARGS__)
+	#define DEBUG_VERBOSE_P(...) trace_verbose(__VA_ARGS__)
 #else
 	#define DEBUG_VERBOSE(...)
+	#define DEBUG_VERBOSE_P(...)
 #endif
 #define DEBUG_ERROR(...) trace_error(__VA_ARGS__)
+#define DEBUG_ERROR_P(...) trace_error_P(__VA_ARGS__)
 
 // #define HIDE_CONFIG
 #define CONFIG_FILE "/config.json"
