@@ -1129,20 +1129,28 @@ void AsyncFFWebServer::handle(void) {
 		debugHandle();
 	#endif
 	// Manage Serial commands
-	#ifdef SERIAL_COMMAND_PREFIX
+	#if defined(SERIAL_COMMAND_PREFIX) || !defined(NO_SERIAL_COMMAND_CALLBACK)
 		while(Serial.available()>0) {
 			char c = Serial.read();
 			// Check for end of line
 			if (c == '\n' || c== '\r') {
 				// Do we have some command?
 				if (serialCommandLen) {
-					// Is command starting by prefix?
-					String command = serialCommand;
-					if (command.startsWith(PSTR(QUOTE(SERIAL_COMMAND_PREFIX)))) {
-						command = command.substring(sizeof(QUOTE(SERIAL_COMMAND_PREFIX))-1);
-						trace_info_P("Executing command %s", command.c_str());
-						executeCommand(command);
+					#ifdef SERIAL_COMMAND_PREFIX
+						// Is command starting by prefix?
+						String command = serialCommand;
+						if (command.startsWith(PSTR(QUOTE(SERIAL_COMMAND_PREFIX)))) {
+							command = command.substring(sizeof(QUOTE(SERIAL_COMMAND_PREFIX))-1);
+							trace_info_P("Executing command %s", command.c_str());
+							executeCommand(command);
+						} else {
+					#endif
+					if (this->serialCommandCallback) {
+						(this->serialCommandCallback(command));
 					}
+					#ifdef SERIAL_COMMAND_PREFIX
+						}
+					#endif
 				}
 				// Reset command
 				serialCommandLen = 0;
@@ -2266,7 +2274,7 @@ const char* AsyncFFWebServer::getHostName(void) {
 	Set configuration change callback
 
 	\param[in]	Address of user routine to be called when a configuration change occurs
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setConfigChangedCallback(CONFIG_CHANGED_CALLBACK_SIGNATURE) {
@@ -2279,10 +2287,25 @@ AsyncFFWebServer& AsyncFFWebServer::setConfigChangedCallback(CONFIG_CHANGED_CALL
 
 /*!
 
+	Set Serial command callback
+
+	\param[in]	Address of user routine to be called when a command has been received on Serial
+	\return	A pointer to this class instance
+
+*/
+#ifndef NO_SERIAL_COMMAND_CALLBACK
+	AsyncFFWebServer& AsyncFFWebServer::setSerialCommandCallback(SERIAL_COMMAND_CALLBACK_SIGNATURE) {
+		this->serialCommandCallback = serialCommandCallback;
+		return *this;
+	}
+#endif
+
+/*!
+
 	Set debug command callback
 
 	\param[in]	Address of user routine to be called when an unknown debug command is received
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setDebugCommandCallback(DEBUG_COMMAND_CALLBACK_SIGNATURE) {
@@ -2295,7 +2318,7 @@ AsyncFFWebServer& AsyncFFWebServer::setDebugCommandCallback(DEBUG_COMMAND_CALLBA
 	Set REST command callback
 
 	\param[in]	Address of user routine to be called when a REST (/rest) command is received
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setRestCommandCallback(REST_COMMAND_CALLBACK_SIGNATURE) {
@@ -2308,7 +2331,7 @@ AsyncFFWebServer& AsyncFFWebServer::setRestCommandCallback(REST_COMMAND_CALLBACK
 	Set JSON command callback
 
 	\param[in]	Address of user routine to be called when a JSON (/json) command is received
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setJsonCommandCallback(JSON_COMMAND_CALLBACK_SIGNATURE) {
@@ -2321,7 +2344,7 @@ AsyncFFWebServer& AsyncFFWebServer::setJsonCommandCallback(JSON_COMMAND_CALLBACK
 	Set POST command callback
 
 	\param[in]	Address of user routine to be called when a POST request command is received
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setPostCommandCallback(POST_COMMAND_CALLBACK_SIGNATURE) {
@@ -2336,7 +2359,7 @@ AsyncFFWebServer& AsyncFFWebServer::setPostCommandCallback(POST_COMMAND_CALLBACK
 	User can add new URL/request intercepting commands that FF_WebServer can't serve
 
 	\param[in]	Address of user routine to be called when a 404 (file not found) error occur.
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setError404Callback(ERROR404_CALLBACK_SIGNATURE) {
@@ -2349,7 +2372,7 @@ AsyncFFWebServer& AsyncFFWebServer::setError404Callback(ERROR404_CALLBACK_SIGNAT
 	Set WiFi connected callback
 
 	\param[in]	Address of user routine to be called when WiFi is connected
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setWifiConnectCallback(WIFI_CONNECT_CALLBACK_SIGNATURE) {
@@ -2362,7 +2385,7 @@ AsyncFFWebServer& AsyncFFWebServer::setWifiConnectCallback(WIFI_CONNECT_CALLBACK
 	Set WiFi disconnected callback
 
 	\param[in]	Address of user routine to be called when WiFi is disconnected
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setWifiDisconnectCallback(WIFI_DISCONNECT_CALLBACK_SIGNATURE) {
@@ -2375,7 +2398,7 @@ AsyncFFWebServer& AsyncFFWebServer::setWifiDisconnectCallback(WIFI_DISCONNECT_CA
 	Set WiFi got IP callback
 
 	\param[in]	Address of user routine to be called when WiFi receives anIp address
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setWifiGotIpCallback(WIFI_GOT_IP_CALLBACK_SIGNATURE) {
@@ -2388,7 +2411,7 @@ AsyncFFWebServer& AsyncFFWebServer::setWifiGotIpCallback(WIFI_GOT_IP_CALLBACK_SI
 	Set MQTT connected callback
 
 	\param	None
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setMqttConnectCallback(MQTT_CONNECT_CALLBACK_SIGNATURE) {
@@ -2401,7 +2424,7 @@ AsyncFFWebServer& AsyncFFWebServer::setMqttConnectCallback(MQTT_CONNECT_CALLBACK
 	Set MQTT message callback
 
 	\param[in]	Address of user routine to be called when an MQTT subscribed message is received
-	\return	None
+	\return	A pointer to this class instance
 
 */
 AsyncFFWebServer& AsyncFFWebServer::setMqttMessageCallback(MQTT_MESSAGE_CALLBACK_SIGNATURE) {
@@ -2485,14 +2508,14 @@ void AsyncFFWebServer::startWifiAP(void) {
 #ifdef REMOTE_DEBUG
 	// Process commands from RemoteDebug
 	void AsyncFFWebServer::executeDebugCommand(void) {
-		String lastCmd = Debug.getLastCommand();
-		FF_WebServer.executeCommand(lastCmd);
+		String command = Debug.getLastCommand();
+		FF_WebServer.executeCommand(command);
 	}
 #endif
 
 // Process commands from RemoteDebug, Serial or MQTT
-void AsyncFFWebServer::executeCommand(const String lastCmd) {
-	if (lastCmd == "vars") {
+void AsyncFFWebServer::executeCommand(const String command) {
+	if (command == "vars") {
 		struct rst_info *rtc_info = system_get_rst_info();
 		trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
 		trace_info_P("uptime=%s",NTP.getUptimeString().c_str());
@@ -2524,16 +2547,16 @@ void AsyncFFWebServer::executeCommand(const String lastCmd) {
 		trace_info_P("mqttTest()=%d", FF_WebServer.mqttTest());
 		trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
 		trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
-	} else if (lastCmd == "debug") {
+	} else if (command == "debug") {
 		FF_WebServer.debugFlag = !FF_WebServer.debugFlag;
 		trace_info_P("Debug is now %d", FF_WebServer.debugFlag);
-	} else if (lastCmd == "trace") {
+	} else if (command == "trace") {
 		FF_WebServer.traceFlag = !FF_WebServer.traceFlag;
 		trace_info_P("Trace is now %d", FF_WebServer.traceFlag);
 	// The following commands are normally treated by remoteDebug
 	//		but as we can also use this callback for MQTT and/or Serial debug,
 	//		they should also be incorporated here.
-	} else if (lastCmd == "h" || lastCmd == "?") {
+	} else if (command == "h" || command == "?") {
 		trace_info_P("\r\n? or h -> display these help of commands\r\n"
 					"m -> display memory available\r\n"
 					"v -> set debug level to verbose\r\n"
@@ -2545,32 +2568,32 @@ void AsyncFFWebServer::executeCommand(const String lastCmd) {
 					"cpu80  -> ESP8266 CPU at 80MHz\r\n"
 					"cpu160 -> ESP8266 CPU at 160MHz\r\n"
 					"reset -> reset the ESP8266\r\n%s%s",FF_WebServer.standardHelpCmd().c_str(), FF_WebServer.userHelpCmd.c_str());
-	} else if (lastCmd == "m") {
+	} else if (command == "m") {
 		trace_info_P("Free Heap RAM: %d", ESP.getFreeHeap());
 	#if defined(ESP8266)
-		} else if (lastCmd == "cpu80") {
+		} else if (command == "cpu80") {
 			system_update_cpu_freq(80);
 			trace_info_P("CPU changed to %u MHz", ESP.getCpuFreqMHz());
-		} else if (lastCmd == "cpu160") {
+		} else if (command == "cpu160") {
 			system_update_cpu_freq(160);
 			trace_info_P("CPU changed to %u MHz", ESP.getCpuFreqMHz());
 	#endif
-	} else if (lastCmd == "v") {
+	} else if (command == "v") {
 		trace_setLevel(FF_TRACE_LEVEL_VERBOSE);
 		trace_info_P("Trace level set to Verbose");
-	} else if (lastCmd == "d") {
+	} else if (command == "d") {
 		trace_setLevel(FF_TRACE_LEVEL_DEBUG);
 		trace_info_P("Trace level set to Debug");
-	} else if (lastCmd == "i") {
+	} else if (command == "i") {
 		trace_setLevel(FF_TRACE_LEVEL_INFO);
 		trace_info_P("Trace level set to Info");
-	} else if (lastCmd == "w") {
+	} else if (command == "w") {
 		trace_setLevel(FF_TRACE_LEVEL_WARN);
 		trace_info_P("Trace level set to Warning");
-	} else if (lastCmd == "e") {
+	} else if (command == "e") {
 		trace_setLevel(FF_TRACE_LEVEL_ERROR);
 		trace_info_P("Trace level set to Error");
-	} else if (lastCmd == "s") {
+	} else if (command == "s") {
 		if (trace_getLevel() != FF_TRACE_LEVEL_NONE) {
 			trace_info_P("Silence on");
 			FF_WebServer.lastTraceLevel = trace_getLevel();			// Save current trace level
@@ -2579,14 +2602,14 @@ void AsyncFFWebServer::executeCommand(const String lastCmd) {
 			trace_setLevel(FF_WebServer.lastTraceLevel);
 			trace_info_P("Silence off, level restored to %d", trace_getLevel());
 		}
-	} else if (lastCmd == "reset") {
+	} else if (command == "reset") {
 		trace_error_P("Reseting ESP ...");
 		delay(1000);
 		ESP.restart();
 	// End of dupplicated debugRemote commands
 	} else {
 		if (FF_WebServer.debugCommandCallback) {
-			FF_WebServer.debugCommandCallback(lastCmd);
+			FF_WebServer.debugCommandCallback(command);
 		}
 	}
 }

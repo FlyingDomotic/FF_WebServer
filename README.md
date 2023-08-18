@@ -83,6 +83,7 @@ The following parameters are used at compile time:
 	REMOTE_DEBUG: (default=defined) Enable telnet remote debug (optional)
 	SERIAL_DEBUG: (default=defined) Enable serial debug (optional, only if REMOTE_DEBUG is disabled)
 	SERIAL_COMMAND_PREFIX: (default=no defined) Prefix of debug commands given on Serial (i.e. `command:). No commands are allowed on Serial if not defined
+	NO_SERIAL_COMMAND_CALLBACK: (default: not defined) Disable Serial command callback
 	HARDWARE_WATCHDOG_PIN: (default=D4) Enable watchdog external circuit on D4 (optional)
 	HARDWARE_WATCHDOG_ON_DELAY: (default=5000) Define watchdog level on delay (in ms)
 	HARDWARE_WATCHDOG_OFF_DELAY: (default=1) Define watchdog level off delay (in ms)
@@ -96,6 +97,14 @@ The following parameters are used at compile time:
 	DEBUG_FF_WEBSERVER: (default=defined) Enable internal FF_WebServer debug
 	FF_DISABLE_DEFAULT_TRACE: (default=not defined) Disable default trace callback
 	FF_TRACE_USE_SYSLOG: (default=defined) SYSLOG to be used for trace
+
+### Reserving Serial for your own use
+
+If you want to use Serial in your own application, and don't want WebServer to use it, you should:
+	Not define SERIAL_DEBUG
+	Not define SERIAL_COMMAND_PREFIX
+	Not define FF_TRACE_USE_SERIAL
+	Define NO_SERIAL_COMMAND_CALLBACK
 
 ## Parameters defined at run time
 
@@ -264,6 +273,16 @@ Set debug command callback
 
 Parameters 
 - [in]	Address of user routine to be called when an unknown debug command is received
+
+Returns
+-	None
+
+### setSerialCommandCallback()
+
+Set serial command callback
+
+Parameters 
+- [in]	Address of user routine to be called when a command has been received on Serial
 
 Returns
 -	None
@@ -604,10 +623,26 @@ Note
 - Note that standard commands are already taken in account by server and never passed here.
 
 Parameters
-- [in]	lastCmd	last debug command entered by user
+- [in]	command	last debug command entered by user
 
 Returns
 - none 
+
+### DEBUG_COMMAND_CALLBACK()
+
+This routine is called when a Serial command is received.
+
+User should analyze here Serial command and execute them properly.
+
+Note
+- Note that standard Serial commands are already taken in account by server and never passed here.
+
+Parameters
+- [in]	command	Serial command entered by user
+
+Returns
+- true if command is known, else false 
+
 
 ### ERROR404_CALLBACK()
 

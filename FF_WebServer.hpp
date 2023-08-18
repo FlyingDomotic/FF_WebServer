@@ -79,7 +79,10 @@
 
 //	Define all callback signatures
 #define CONFIG_CHANGED_CALLBACK_SIGNATURE std::function<void(void)> configChangedCallback
-#define DEBUG_COMMAND_CALLBACK_SIGNATURE std::function<bool(const String lastCmd)> debugCommandCallback
+#define DEBUG_COMMAND_CALLBACK_SIGNATURE std::function<bool(const String command)> debugCommandCallback
+#ifndef NO_SERIAL_COMMAND_CALLBACK
+	#define SERIAL_COMMAND_CALLBACK_SIGNATURE std::function<bool(const String command)> serialCommandCallback
+#endif
 #define REST_COMMAND_CALLBACK_SIGNATURE std::function<bool(AsyncWebServerRequest *request)> restCommandCallback
 #define JSON_COMMAND_CALLBACK_SIGNATURE std::function<bool(AsyncWebServerRequest *request)> jsonCommandCallback
 #define POST_COMMAND_CALLBACK_SIGNATURE std::function<bool(AsyncWebServerRequest *request)> postCommandCallback
@@ -92,7 +95,10 @@
 
 // Define all callbacks
 #define CONFIG_CHANGED_CALLBACK(routine) void routine(void)
-#define DEBUG_COMMAND_CALLBACK(routine) bool routine(const String lastCmd)
+#define DEBUG_COMMAND_CALLBACK(routine) bool routine(const String debugCommand)
+#ifndef NO_SERIAL_COMMAND_CALLBACK
+	#define SERIAL_COMMAND_CALLBACK(routine) bool routine(const String command)
+#endif
 #define REST_COMMAND_CALLBACK(routine) bool routine(AsyncWebServerRequest *request)
 #define JSON_COMMAND_CALLBACK(routine) bool routine(AsyncWebServerRequest *request)
 #define POST_COMMAND_CALLBACK(routine) bool routine(AsyncWebServerRequest *request)
@@ -154,6 +160,9 @@ public:
 	// Set callbacks
 	AsyncFFWebServer& setConfigChangedCallback(CONFIG_CHANGED_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setDebugCommandCallback(DEBUG_COMMAND_CALLBACK_SIGNATURE);
+	#ifndef NO_SERIAL_COMMAND_CALLBACK
+		AsyncFFWebServer& setSerialCommandCallback(SERIAL_COMMAND_CALLBACK_SIGNATURE);
+	#endif
 	AsyncFFWebServer& setRestCommandCallback(REST_COMMAND_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setJsonCommandCallback(JSON_COMMAND_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setPostCommandCallback(POST_COMMAND_CALLBACK_SIGNATURE);
@@ -208,6 +217,9 @@ protected:
 	// Callbacks
 	CONFIG_CHANGED_CALLBACK_SIGNATURE;
 	DEBUG_COMMAND_CALLBACK_SIGNATURE;
+	#ifndef NO_SERIAL_COMMAND_CALLBACK
+		SERIAL_COMMAND_CALLBACK_SIGNATURE;
+	#endif
 	REST_COMMAND_CALLBACK_SIGNATURE;
 	JSON_COMMAND_CALLBACK_SIGNATURE;
 	POST_COMMAND_CALLBACK_SIGNATURE;
@@ -269,8 +281,8 @@ protected:
 	#endif
 	traceLevel_t lastTraceLevel;
 
-	#ifdef SERIAL_COMMAND_PREFIX
-		char serialCommand[80] = "";						// Buffer to save serial commands
+	#if defined(SERIAL_COMMAND_PREFIX) || !defined(NO_SERIAL_COMMAND_CALLBACK)
+		char serialCommand[200] = "";						// Buffer to save serial commands
 		size_t serialCommandLen = 0;						// Buffer used lenght
 	#endif
 	// ----- Syslog -----
