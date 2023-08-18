@@ -10,6 +10,7 @@
             <tr><td align="right">MQTT User Name</td><td><input type="text" id="MQTTUser" name="MQTTUser" value=""></td></tr>
             <tr><td align="right">MQTT Password</td><td><input type="text" id="MQTTPass" name="MQTTPass" value=""></td></tr>
             <tr><td align="right">MQTT Topic</td><td><input type="text" id="MQTTTopic" name="MQTTTopic" value=""></td></tr>
+            <tr><td align="right">MQTT Command Topic</td><td><input type="text" id="MQTTCommandTopic" name="MQTTCommandTopic" value=""></td></tr>
             <tr><td align="right">MQTT Host</td><td><input type="text" id="MQTTHost" name="MQTTHost" value=""></td></tr>
             <tr><td align="right">MQTT Port</td><td><input type="text" id="MQTTPort" name="MQTTPort" value=""></td></tr>
             <tr><td align="right">MQTT Publish Interval</td><td><input type="text" id="MQTTInterval" name="MQTTInterval" value=""></td></tr>
@@ -26,7 +27,7 @@
 				{
 					load("microajax.js","js", function()
 					{
-                        setValues("/rconfig/MQTTUser/MQTTPass/MQTTTopic/MQTTHost/MQTTPort/MQTTClientID/MQTTInterval/SyslogServer/SyslogPort");
+                        setValues("/rconfig/MQTTUser/MQTTPass/MQTTTopic/MQTTCommandTopic/MQTTHost/MQTTPort/MQTTClientID/MQTTInterval/SyslogServer/SyslogPort");
 					});
 				});
 			}

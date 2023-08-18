@@ -177,6 +177,7 @@ public:
 	void configureWifiAP();
 
 	void setHelpCmd(const char *helpCommands);
+	void executeCommand(const String lastCde);
 	bool mqttSubscribe (const char *subTopic, const int qos = 0);
 	bool mqttSubscribeRaw (const char *topic, const int qos = 0);
 	void mqttPublish (const char *subTopic, const char *value);
@@ -227,6 +228,7 @@ protected:
 	String configMQTT_Pass = "";
 	String configMQTT_Host = "";
 	String configMQTT_Topic = "";
+	String configMQTT_CommandTopic = "";
 	String configMQTT_ClientID = "";
 	bool mqttInitialized = false;
 	bool wifiConnected = false;
@@ -257,14 +259,21 @@ protected:
 	void loadUserConfig(void);
 	void error404(AsyncWebServerRequest *request);
 	bool serverStarted = false;
-	String standardHelpCmd = "";
+	String standardHelpCmd();
+	String userHelpCmd = "";
 
 	// ----- Debug -----
 	#ifdef REMOTE_DEBUG
 		// ---- Remote debug -----
 		static void executeDebugCommand();
 	#endif
-// ----- Syslog -----
+	traceLevel_t lastTraceLevel;
+
+	#ifdef SERIAL_COMMAND_PREFIX
+		char serialCommand[80] = "";						// Buffer to save serial commands
+		size_t serialCommandLen = 0;						// Buffer used lenght
+	#endif
+	// ----- Syslog -----
 	#ifdef FF_TRACE_USE_SYSLOG
 		String syslogServer = "";
 		int syslogPort = 0;

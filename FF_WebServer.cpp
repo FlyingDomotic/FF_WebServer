@@ -20,6 +20,9 @@
 #include "FF_WebServer.hpp"
 #include <StreamString.h>
 
+#define XQUOTE(x) #x
+#define QUOTE(x) XQUOTE(x)
+
 const char Page_WaitAndReload[] PROGMEM = R"=====(
 <meta http-equiv="refresh" content="10; URL=/config.html">
 Please Wait....Configuring and Restarting.
@@ -36,6 +39,10 @@ extern trace_declare();
 // ----- Remote debug -----
 #ifdef REMOTE_DEBUG
 	extern RemoteDebug Debug;
+#endif
+
+#if defined(ESP8266)
+	extern "C" {bool system_update_cpu_freq(uint8_t freq);}	// ESP8266 SDK
 #endif
 
 // ----- Web server -----
@@ -145,6 +152,9 @@ void AsyncFFWebServer::onMqttConnect(bool sessionPresent) {
 	if (FF_WebServer.mqttConnectCallback) {
 		FF_WebServer.mqttConnectCallback();
 	}
+	if (FF_WebServer.configMQTT_CommandTopic != "") {
+		FF_WebServer.mqttSubscribeRaw(FF_WebServer.configMQTT_CommandTopic.c_str());
+	}
 }
 
 // Called on MQTT disconnection
@@ -175,6 +185,15 @@ void AsyncFFWebServer::onMqttMessage(char* topic, char* payload, AsyncMqttClient
 	memset(localPayload, '\0', sizeof(localPayload));
 	strncpy(localPayload, payload, localSize);
 	if (FF_WebServer.traceFlag) trace_info_P("Received: topic %s, payload %s, len %d, localLen %d, index %d, total %d", topic, localPayload, len, localSize, index, total);
+	// Do we have a MQTT command topic defined?
+	if (FF_WebServer.configMQTT_CommandTopic != "") {
+		// Is this topic the same?
+		if (strcmp(topic, FF_WebServer.configMQTT_CommandTopic.c_str()) == 0) {
+			// Yes, execute (debug) command
+			FF_WebServer.executeCommand(String(localPayload));
+			return;
+		}
+	}
 	if (FF_WebServer.mqttMessageCallback) {
 		FF_WebServer.mqttMessageCallback(topic, payload, properties, len, index, total);
 	}
@@ -375,6 +394,7 @@ void AsyncFFWebServer::loadConfig(void) {
 	load_user_config("MQTTPass", configMQTT_Pass);
 	load_user_config("MQTTPort", configMQTT_Port);
 	load_user_config("MQTTTopic", configMQTT_Topic);
+	load_user_config("MQTTCommandTopic", configMQTT_CommandTopic);
 	load_user_config("MQTTUser", configMQTT_User);
 	load_user_config("MQTTClientID", configMQTT_ClientID);
 	load_user_config("MQTTInterval", configMQTT_Interval);
@@ -452,6 +472,11 @@ void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 	digitalWrite(pin, oldState); // Turn on LED
 }
 
+// Return standard help message
+String AsyncFFWebServer::standardHelpCmd() {
+	return String(PSTR("vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n"));
+}
+
 /*!
 
 	Initialize FF_WebServer class
@@ -468,7 +493,6 @@ void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	_fs = fs;
 	userVersion = String(version);
-	standardHelpCmd = PSTR("vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n");
 	connectionTimout = 0;
 
 	// ----- Global trace ----
@@ -545,7 +569,10 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		Debug.showProfiler(true); // Profiler (Good to measure times, to optimize codes)
 		Debug.showColors(true); // Colors
 		//Debug.setSerialEnabled(true); // if you wants serial echo - only recommended if ESP is plugged in USB
-		Debug.setHelpProjectsCmds(standardHelpCmd);
+		// Set help message if not already defined
+		if (userHelpCmd == "") {
+			Debug.setHelpProjectsCmds(standardHelpCmd());
+		}
 		Debug.setCallBackProjectCmds((void(*)())&AsyncFFWebServer::executeDebugCommand);
 	#endif
 	#ifdef SERIAL_DEBUG
@@ -657,6 +684,7 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 			connectToMqtt();
 		}
 	}
+	FF_WebServer.lastTraceLevel = trace_getLevel();			// Save current trace level
 	DEBUG_VERBOSE_P("END Setup");
 }
 
@@ -1097,6 +1125,39 @@ void AsyncFFWebServer::handle(void) {
 	#endif
 	#ifdef SERIAL_DEBUG
 		debugHandle();
+	#endif
+	// Manage Serial commands
+	#ifdef SERIAL_COMMAND_PREFIX
+		while(Serial.available()>0) {
+			char c = Serial.read();
+			// Check for end of line
+			if (c == '\n' || c== '\r') {
+				// Do we have some command?
+				if (serialCommandLen) {
+					// Is command starting by prefix?
+					String command = serialCommand;
+					if (command.startsWith(PSTR(QUOTE(SERIAL_COMMAND_PREFIX)))) {
+						command = command.substring(sizeof(QUOTE(SERIAL_COMMAND_PREFIX))-1);
+						trace_info_P("Executing command %s", command.c_str());
+						executeCommand(command);
+					}
+				}
+				// Reset command
+				serialCommandLen = 0;
+				serialCommand[serialCommandLen] = '\0';
+			} else {
+				// Do we still have room in buffer?
+				if (serialCommandLen < sizeof(serialCommand)) {
+						// Yes, add char
+						serialCommand[serialCommandLen++] = c;
+						serialCommand[serialCommandLen] = '\0';
+				} else {
+					// Reset command
+					serialCommandLen = 0;
+					serialCommand[serialCommandLen] = '\0';
+				}
+			}
+		}
 	#endif
 
 	#ifdef HARDWARE_WATCHDOG_PIN
@@ -2355,7 +2416,8 @@ AsyncFFWebServer& AsyncFFWebServer::setMqttMessageCallback(MQTT_MESSAGE_CALLBACK
 
 */
 void AsyncFFWebServer::setHelpCmd(const char *helpCommands) {
-	Debug.setHelpProjectsCmds(standardHelpCmd + String(helpCommands));
+	userHelpCmd = String(helpCommands);
+	Debug.setHelpProjectsCmds(standardHelpCmd()+userHelpCmd);
 }
 
 /*!
@@ -2422,51 +2484,110 @@ void AsyncFFWebServer::startWifiAP(void) {
 	// Process commands from RemoteDebug
 	void AsyncFFWebServer::executeDebugCommand(void) {
 		String lastCmd = Debug.getLastCommand();
-		struct rst_info *rtc_info = system_get_rst_info();
-
-		if (lastCmd == "vars") {
-			trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
-			trace_info_P("uptime=%s",NTP.getUptimeString().c_str());
-			time_t bootTime = NTP.getLastBootTime();
-			trace_info_P("boot=%s %s",NTP.getDateStr(bootTime).c_str(), NTP.getTimeStr(bootTime).c_str());
-			trace_info_P("Reset reason: %x - %s", rtc_info->reason, ESP.getResetReason().c_str());
-			// In case of software restart, print additional info
-			if (rtc_info->reason == REASON_WDT_RST || rtc_info->reason == REASON_EXCEPTION_RST || rtc_info->reason == REASON_SOFT_WDT_RST) {
-				// If crashed, print exception
-				if (rtc_info->reason == REASON_EXCEPTION_RST) {
-					trace_info_P("Fatal exception (%d)", rtc_info->exccause);
-				}
-				trace_info_P("epc1=0x%08x, epc2=0x%08x, epc3=0x%08x, excvaddr=0x%08x, depc=0x%08x", rtc_info->epc1, rtc_info->epc2, rtc_info->epc3, rtc_info->excvaddr, rtc_info->depc);
-			}
-			IPAddress ip = WiFi.localIP();
-			trace_info_P("IP=%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
-			byte mac[6];
-			WiFi.macAddress(mac);
-			trace_info_P("MAC=%2x:%2x:%2x:%2x:%2x:%2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-			trace_info_P("configMQTT_Host=%s", FF_WebServer.configMQTT_Host.c_str());
-			trace_info_P("configMQTT_Port=%d", FF_WebServer.configMQTT_Port);
-			trace_info_P("configMQTT_ClientID=%s", FF_WebServer.configMQTT_ClientID.c_str());
-			trace_info_P("configMQTT_User=%s", FF_WebServer.configMQTT_User.c_str());
-			trace_info_P("configMQTT_Pass=%s", FF_WebServer.configMQTT_Pass.c_str());
-			trace_info_P("configMQTT_Topic=%s", FF_WebServer.configMQTT_Topic.c_str());
-			trace_info_P("configMQTT_Interval=%d", FF_WebServer.configMQTT_Interval);
-			trace_info_P("mqttConnected()=%d", FF_WebServer.mqttClient.connected());
-			trace_info_P("mqttTest()=%d", FF_WebServer.mqttTest());
-			trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
-			trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
-		} else if (lastCmd == "debug") {
-			FF_WebServer.debugFlag = !FF_WebServer.debugFlag;
-			trace_info_P("Debug is now %d", FF_WebServer.debugFlag);
-		} else if (lastCmd == "trace") {
-			FF_WebServer.traceFlag = !FF_WebServer.traceFlag;
-			trace_info_P("Trace is now %d", FF_WebServer.traceFlag);
-		} else {
-			if (FF_WebServer.debugCommandCallback) {
-				FF_WebServer.debugCommandCallback(lastCmd);
-			}
-		}
+		FF_WebServer.executeCommand(lastCmd);
 	}
 #endif
+
+// Process commands from RemoteDebug, Serial or MQTT
+void AsyncFFWebServer::executeCommand(const String lastCmd) {
+	if (lastCmd == "vars") {
+		struct rst_info *rtc_info = system_get_rst_info();
+		trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
+		trace_info_P("uptime=%s",NTP.getUptimeString().c_str());
+		time_t bootTime = NTP.getLastBootTime();
+			trace_info_P("boot=%s %s",NTP.getDateStr(bootTime).c_str(), NTP.getTimeStr(bootTime).c_str());
+		trace_info_P("Reset reason: %x - %s", rtc_info->reason, ESP.getResetReason().c_str());
+		// In case of software restart, print additional info
+		if (rtc_info->reason == REASON_WDT_RST || rtc_info->reason == REASON_EXCEPTION_RST || rtc_info->reason == REASON_SOFT_WDT_RST) {
+			// If crashed, print exception
+			if (rtc_info->reason == REASON_EXCEPTION_RST) {
+				trace_info_P("Fatal exception (%d)", rtc_info->exccause);
+			}
+			trace_info_P("epc1=0x%08x, epc2=0x%08x, epc3=0x%08x, excvaddr=0x%08x, depc=0x%08x", rtc_info->epc1, rtc_info->epc2, rtc_info->epc3, rtc_info->excvaddr, rtc_info->depc);
+		}
+		IPAddress ip = WiFi.localIP();
+		trace_info_P("IP=%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
+		byte mac[6];
+		WiFi.macAddress(mac);
+		trace_info_P("MAC=%2x:%2x:%2x:%2x:%2x:%2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		trace_info_P("configMQTT_Host=%s", FF_WebServer.configMQTT_Host.c_str());
+		trace_info_P("configMQTT_Port=%d", FF_WebServer.configMQTT_Port);
+		trace_info_P("configMQTT_ClientID=%s", FF_WebServer.configMQTT_ClientID.c_str());
+		trace_info_P("configMQTT_User=%s", FF_WebServer.configMQTT_User.c_str());
+		trace_info_P("configMQTT_Pass=%s", FF_WebServer.configMQTT_Pass.c_str());
+		trace_info_P("configMQTT_Topic=%s", FF_WebServer.configMQTT_Topic.c_str());
+		trace_info_P("configMQTT_CommandTopic=%s", FF_WebServer.configMQTT_CommandTopic.c_str());
+		trace_info_P("configMQTT_Interval=%d", FF_WebServer.configMQTT_Interval);
+		trace_info_P("mqttConnected()=%d", FF_WebServer.mqttClient.connected());
+		trace_info_P("mqttTest()=%d", FF_WebServer.mqttTest());
+		trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
+		trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
+	} else if (lastCmd == "debug") {
+		FF_WebServer.debugFlag = !FF_WebServer.debugFlag;
+		trace_info_P("Debug is now %d", FF_WebServer.debugFlag);
+	} else if (lastCmd == "trace") {
+		FF_WebServer.traceFlag = !FF_WebServer.traceFlag;
+		trace_info_P("Trace is now %d", FF_WebServer.traceFlag);
+	// The following commands are normally treated by remoteDebug
+	//		but as we can also use this callback for MQTT and/or Serial debug,
+	//		they should also be incorporated here.
+	} else if (lastCmd == "h" || lastCmd == "?") {
+		trace_info_P("\r\n? or h -> display these help of commands\r\n"
+					"m -> display memory available\r\n"
+					"v -> set debug level to verbose\r\n"
+					"d -> set debug level to debug\r\n"
+					"i -> set debug level to info\r\n"
+					"w -> set debug level to warning\r\n"
+					"e -> set debug level to errors\r\n"
+					"s -> set debug silence on/off\r\n"
+					"cpu80  -> ESP8266 CPU a 80MHz\r\n"
+					"cpu160 -> ESP8266 CPU a 160MHz\r\n"
+					"reset -> reset the ESP8266\r\n%s%s",FF_WebServer.standardHelpCmd().c_str(), FF_WebServer.userHelpCmd.c_str());
+	} else if (lastCmd == "m") {
+		trace_info_P("Free Heap RAM: %d", ESP.getFreeHeap());
+	#if defined(ESP8266)
+		} else if (lastCmd == "cpu80") {
+			system_update_cpu_freq(80);
+			trace_info_P("CPU changed to %u MHz", ESP.getCpuFreqMHz());
+		} else if (lastCmd == "cpu160") {
+			system_update_cpu_freq(160);
+			trace_info_P("CPU changed to %u MHz", ESP.getCpuFreqMHz());
+	#endif
+	} else if (lastCmd == "v") {
+		trace_setLevel(FF_TRACE_LEVEL_VERBOSE);
+		trace_info_P("Trace level set to Verbose");
+	} else if (lastCmd == "d") {
+		trace_setLevel(FF_TRACE_LEVEL_DEBUG);
+		trace_info_P("Trace level set to Debug");
+	} else if (lastCmd == "i") {
+		trace_setLevel(FF_TRACE_LEVEL_INFO);
+		trace_info_P("Trace level set to Info");
+	} else if (lastCmd == "w") {
+		trace_setLevel(FF_TRACE_LEVEL_WARN);
+		trace_info_P("Trace level set to Warning");
+	} else if (lastCmd == "e") {
+		trace_setLevel(FF_TRACE_LEVEL_ERROR);
+		trace_info_P("Trace level set to Error");
+	} else if (lastCmd == "s") {
+		if (trace_getLevel() != FF_TRACE_LEVEL_NONE) {
+			trace_info_P("Silence on");
+			FF_WebServer.lastTraceLevel = trace_getLevel();			// Save current trace level
+			trace_setLevel(FF_TRACE_LEVEL_NONE);
+		} else {
+			trace_setLevel(FF_WebServer.lastTraceLevel);
+			trace_info_P("Silence off, level restored to %d", trace_getLevel());
+		}
+	} else if (lastCmd == "reset") {
+		trace_error_P("Reseting ESP ...");
+		delay(1000);
+		ESP.restart();
+	// End of dupplicated debugRemote commands
+	} else {
+		if (FF_WebServer.debugCommandCallback) {
+			FF_WebServer.debugCommandCallback(lastCmd);
+		}
+	}
+}
 
 #ifndef FF_DISABLE_DEFAULT_TRACE
 	// Default trace callback
