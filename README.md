@@ -3,9 +3,16 @@
 
 ## What's for?
 
-This library implements on ESP8266 a fully asynchronous Web server, with MQTT connection, Arduino and Web OTA, optional telnet or serial debug, optional serial and/or syslog trace, optional external hardware watchdog and optional Domoticz connectivity.
-
-It also has a local file system to host user and server files.
+This library implements on ESP8266 a fully asynchronous Web server, with:
+- MQTT connection
+- Arduino and Web OTA
+- local file system to host user and server files
+- file and/or browser based settings
+- full file editor/upload/download
+- optional telnet or serial or MQTT debug commands
+- optional serial and/or syslog trace
+- optional external hardware watchdog
+- optional Domoticz connectivity
 
 This code is based on a highly modified version of https://github.com/FordPrfkt/FSBrowserNG, itself a fork of https://github.com/gmag11/FSBrowserNG, not anymore maintained.
 
@@ -47,6 +54,9 @@ or
 ```
 git checkout <modified file>
 ```
+Warning: as files in data folder should be downloaded on ESP file system, it may be a good idea to check if some of them have been changed be a new version, to update them on your ESP.
+
+Remind also that config.json and userconfig.json are specific to your installation. Don't forget to download them from your ESP before making a global file system upload.
 
 ## Documentation
 
@@ -72,7 +82,7 @@ Details of routines that are available in FF_WebServer are described at end of t
 The following parameters are used at compile time:
 	REMOTE_DEBUG: (default=defined) Enable telnet remote debug (optional)
 	SERIAL_DEBUG: (default=defined) Enable serial debug (optional, only if REMOTE_DEBUG is disabled)
-	SERIAL_COMMAND_PREFIX: (default=no defined) Prefix of debug commands given on Serial (i.e. "command:"). No commands allowed on Serial if not defined
+	SERIAL_COMMAND_PREFIX: (default=no defined) Prefix of debug commands given on Serial (i.e. `command:). No commands are allowed on Serial if not defined
 	HARDWARE_WATCHDOG_PIN: (default=D4) Enable watchdog external circuit on D4 (optional)
 	HARDWARE_WATCHDOG_ON_DELAY: (default=5000) Define watchdog level on delay (in ms)
 	HARDWARE_WATCHDOG_OFF_DELAY: (default=1) Define watchdog level off delay (in ms)
@@ -121,6 +131,37 @@ The following parameters can be defined, either in json files before loading Lit
 	mqttLwtTopic: root MQTT last will topic to to read application status
 	allowedNumbers: allowed senders phone numbers, comma separated
 
+## Debug commands
+
+Debug commands are available to help understanding what happens, and may be a good starting point to help troubleshooting.
+
+Debug output is available on Telnet, Serial and Syslog. Note that settings can disable some of these outputs.
+
+### Access
+Debug is available through:
+- Telnet: connect with a telnet tool on ESP's port 23, and strike commands on keyboard
+- MQTT: send the raw command to mqttCommandTopic (don't set the retain flag unless you want the command to be executed at each ESP restart)
+- Serial: send the command on Serial, prefixing it by SERIAL_COMMAND_PREFIX (i.e. command:vars`)
+
+### Commands
+The following commands are allowed:
+The following commands are allowed:
+	- ? or h: display these help of commands
+	- m: display memory available
+	- v: set debug level to verbose
+	- d: set debug level to debug
+	- i: set debug level to info
+	- w: set debug level to warning
+	- e: set debug level to errors
+	- s: set debug silence on/off
+	- cpu80 : ESP8266 CPU at 80MHz
+	- cpu160: ESP8266 CPU at 160MHz
+	- reset: reset the ESP8266
+	- vars: Dump standard variables
+	- user: Dump user variables
+	- debug: Toggle debug flag
+	- trace: Toggle trace flag
+
 ## Available Web pages
 
 - / and /index.htm -> index root file
@@ -157,9 +198,9 @@ WebServer answers to the following URLs. If authentication is turned on, some of
 - /rconfig (GET) -> get configuration data
 - /pconfig (POST) -> set configuration data
 - /rest -> activate a rest request to get some (user's) values (*)
-- /rest/values -> -> return values to be loaded in index.html and index_user.html (*)
+- /rest/values -> return values to be loaded in index.html and index_user.html (*)
 - /json -> activate a rest request to get some (user's) values (*)
-- /post  -> activate a post request to set some (user's) values (*)
+- /post -> activate a post request to set some (user's) values (*)
 
 ### HTML files (in addition to available web pages described before)
 - /index_user.html -> user specific part of index.html (*)

@@ -2,14 +2,16 @@
 
 	FF_WebServer
 
-	This library implements on ESP8266 a fully asynchronous Web server,
-		with MQTT connection, Arduino and Web OTA,
-		optional telnet or serial debug, 
-		optional serial and/or syslog trace, 
-		optional external hardware watchdog
-		and optional Domoticz connectivity.
-
-	It also has a local file system to host user and server files.
+	This library implements on ESP8266 a fully asynchronous Web server with:
+		- MQTT connection
+		- Arduino and Web OTA
+		- local file system to host user and server files
+		- file and/or browser based settings
+		- full file editor/upload/download
+		- optional telnet or serial or MQTT debug commands
+		- optional serial and/or syslog trace
+		- optional external hardware watchdog
+		- optional Domoticz connectivity
 
 	This code is based on a highly modified version of https://github.com/FordPrfkt/FSBrowserNG,
 		itself a fork of https://github.com/gmag11/FSBrowserNG, not anymore maintained.
@@ -474,7 +476,7 @@ void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 
 // Return standard help message
 String AsyncFFWebServer::standardHelpCmd() {
-	return String(PSTR("vars - Dump standard variables\r\nuser - Dump user variables\r\ndebug - Toggle debug flag\r\ntrace - Toggle trace flag\r\n"));
+	return String(PSTR("vars -> dump standard variables\r\nuser -> dump user variables\r\ndebug -> toggle debug flag\r\ntrace -> toggle trace flag\r\n"));
 }
 
 /*!
@@ -2540,8 +2542,8 @@ void AsyncFFWebServer::executeCommand(const String lastCmd) {
 					"w -> set debug level to warning\r\n"
 					"e -> set debug level to errors\r\n"
 					"s -> set debug silence on/off\r\n"
-					"cpu80  -> ESP8266 CPU a 80MHz\r\n"
-					"cpu160 -> ESP8266 CPU a 160MHz\r\n"
+					"cpu80  -> ESP8266 CPU at 80MHz\r\n"
+					"cpu160 -> ESP8266 CPU at 160MHz\r\n"
 					"reset -> reset the ESP8266\r\n%s%s",FF_WebServer.standardHelpCmd().c_str(), FF_WebServer.userHelpCmd.c_str());
 	} else if (lastCmd == "m") {
 		trace_info_P("Free Heap RAM: %d", ESP.getFreeHeap());
