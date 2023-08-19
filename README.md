@@ -154,8 +154,7 @@ Debug is available through:
 
 ### Commands
 The following commands are allowed:
-The following commands are allowed:
-	- ? or h: display these help of commands
+	- ? or h or help: display this message
 	- m: display memory available
 	- v: set debug level to verbose
 	- d: set debug level to debug
@@ -263,6 +262,16 @@ Set configuration change callback
 
 Parameters 
 - [in]	Address of user routine to be called when a configuration change occurs
+
+Returns
+-	None
+
+### setHelpMessageCallback()
+
+Set help message callback
+
+Parameters 
+- [in]	Address of user routine to be called to load user's help message
 
 Returns
 -	None
@@ -561,16 +570,6 @@ Parameters
 Returns
 - None 
 
-### setHelpCmd()
-
-Adds user help commands to the standard debug command help list.
-
-Parameters
-- [in]	helpCommands	additional help commands, each line ended by \r\n    (CR/LF)
-
-Returns
-- None 
-
 ### startWifi()
 
 Start Wifi client
@@ -613,6 +612,16 @@ Parameters
 Returns
 - none 
 
+### HELP_MESSAGE_CALLBACK()
+
+Adds user help commands to the standard debug command help list.
+
+Parameters
+- None 
+
+Returns
+- additional help commands, each line ended by \r\n    (CR/LF)
+
 ### DEBUG_COMMAND_CALLBACK()
 
 This routine is called when a user's debug command is received.
@@ -628,7 +637,7 @@ Parameters
 Returns
 - none 
 
-### DEBUG_COMMAND_CALLBACK()
+### SERIAL_COMMAND_CALLBACK()
 
 This routine is called when a Serial command is received.
 
@@ -771,6 +780,7 @@ Parameters
 
 Returns
 - none 
+
 
 ## Content of a typical user INO (or cpp) file
 

@@ -80,6 +80,7 @@
 //	Define all callback signatures
 #define CONFIG_CHANGED_CALLBACK_SIGNATURE std::function<void(void)> configChangedCallback
 #define DEBUG_COMMAND_CALLBACK_SIGNATURE std::function<bool(const String command)> debugCommandCallback
+#define HELP_MESSAGE_CALLBACK_SIGNATURE std::function<String(void)> helpMessageCallback
 #ifndef NO_SERIAL_COMMAND_CALLBACK
 	#define SERIAL_COMMAND_CALLBACK_SIGNATURE std::function<bool(const String command)> serialCommandCallback
 #endif
@@ -96,6 +97,7 @@
 // Define all callbacks
 #define CONFIG_CHANGED_CALLBACK(routine) void routine(void)
 #define DEBUG_COMMAND_CALLBACK(routine) bool routine(const String debugCommand)
+#define HELP_MESSAGE_CALLBACK(routine) String routine(void)
 #ifndef NO_SERIAL_COMMAND_CALLBACK
 	#define SERIAL_COMMAND_CALLBACK(routine) bool routine(const String command)
 #endif
@@ -160,6 +162,7 @@ public:
 	// Set callbacks
 	AsyncFFWebServer& setConfigChangedCallback(CONFIG_CHANGED_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setDebugCommandCallback(DEBUG_COMMAND_CALLBACK_SIGNATURE);
+	AsyncFFWebServer& setHelpMessageCallback(HELP_MESSAGE_CALLBACK_SIGNATURE);
 	#ifndef NO_SERIAL_COMMAND_CALLBACK
 		AsyncFFWebServer& setSerialCommandCallback(SERIAL_COMMAND_CALLBACK_SIGNATURE);
 	#endif
@@ -185,7 +188,6 @@ public:
 	void sendTimeData();
 	void configureWifiAP();
 
-	void setHelpCmd(const char *helpCommands);
 	void executeCommand(const String lastCde);
 	bool mqttSubscribe (const char *subTopic, const int qos = 0);
 	bool mqttSubscribeRaw (const char *topic, const int qos = 0);
@@ -217,6 +219,7 @@ protected:
 	// Callbacks
 	CONFIG_CHANGED_CALLBACK_SIGNATURE;
 	DEBUG_COMMAND_CALLBACK_SIGNATURE;
+	HELP_MESSAGE_CALLBACK_SIGNATURE;
 	#ifndef NO_SERIAL_COMMAND_CALLBACK
 		SERIAL_COMMAND_CALLBACK_SIGNATURE;
 	#endif
@@ -272,7 +275,6 @@ protected:
 	void error404(AsyncWebServerRequest *request);
 	bool serverStarted = false;
 	String standardHelpCmd();
-	String userHelpCmd = "";
 
 	// ----- Debug -----
 	#ifdef REMOTE_DEBUG

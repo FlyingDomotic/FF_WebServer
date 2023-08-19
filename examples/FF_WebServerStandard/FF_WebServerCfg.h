@@ -22,4 +22,5 @@
 	#define AP_ENABLE_TIMEOUT 240							// (Seconds, max 255) If the device can not connect to WiFi it will switch to AP mode after this time. -1 to disable
 	#define DEBUG_FF_WEBSERVER								// Enable internal FF_WebServer debug
 	//#define FF_DISABLE_DEFAULT_TRACE						// Disable default trace callback
+	//#define NO_SERIAL_COMMAND_CALLBACK					// Disable Serial command callback
 #endif

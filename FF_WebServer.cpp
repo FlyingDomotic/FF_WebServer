@@ -571,10 +571,8 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		Debug.showProfiler(true); // Profiler (Good to measure times, to optimize codes)
 		Debug.showColors(true); // Colors
 		//Debug.setSerialEnabled(true); // if you wants serial echo - only recommended if ESP is plugged in USB
-		// Set help message if not already defined
-		if (userHelpCmd == "") {
-			Debug.setHelpProjectsCmds(standardHelpCmd());
-		}
+		// Set help message
+		Debug.setHelpProjectsCmds(PSTR("help -> display full help message"));
 		Debug.setCallBackProjectCmds((void(*)())&AsyncFFWebServer::executeDebugCommand);
 	#endif
 	#ifdef SERIAL_DEBUG
@@ -2302,6 +2300,19 @@ AsyncFFWebServer& AsyncFFWebServer::setConfigChangedCallback(CONFIG_CHANGED_CALL
 
 /*!
 
+	Set help command callback
+
+	\param[in]	Address of user routine to be called when an help text should be displayed
+	\return	A pointer to this class instance
+
+*/
+AsyncFFWebServer& AsyncFFWebServer::setHelpMessageCallback(HELP_MESSAGE_CALLBACK_SIGNATURE) {
+	this->helpMessageCallback = helpMessageCallback;
+	return *this;
+}
+
+/*!
+
 	Set debug command callback
 
 	\param[in]	Address of user routine to be called when an unknown debug command is received
@@ -2434,19 +2445,6 @@ AsyncFFWebServer& AsyncFFWebServer::setMqttMessageCallback(MQTT_MESSAGE_CALLBACK
 
 /*!
 
-	Adds user help commands to the standard debug command help list.
-
-	\param[in]	helpCommands: additional help commands, each line ended by \r\n (CR/LF)
-	\return	none
-
-*/
-void AsyncFFWebServer::setHelpCmd(const char *helpCommands) {
-	userHelpCmd = String(helpCommands);
-	Debug.setHelpProjectsCmds(standardHelpCmd()+userHelpCmd);
-}
-
-/*!
-
 	Get FF_WebServer version
 
 	\param	None
@@ -2556,8 +2554,13 @@ void AsyncFFWebServer::executeCommand(const String command) {
 	// The following commands are normally treated by remoteDebug
 	//		but as we can also use this callback for MQTT and/or Serial debug,
 	//		they should also be incorporated here.
-	} else if (command == "h" || command == "?") {
-		trace_info_P("\r\n? or h -> display these help of commands\r\n"
+	} else if (command == "h" || command == "?" || command == "help") {
+		String helpText = "";
+		if (FF_WebServer.helpMessageCallback) {
+			helpText = (FF_WebServer.helpMessageCallback());
+			trace_info_P("helpText=>%s<", helpText.c_str());
+		}
+		trace_info_P("\r\nhelp -> display this message\r\n"
 					"m -> display memory available\r\n"
 					"v -> set debug level to verbose\r\n"
 					"d -> set debug level to debug\r\n"
@@ -2567,7 +2570,9 @@ void AsyncFFWebServer::executeCommand(const String command) {
 					"s -> set debug silence on/off\r\n"
 					"cpu80  -> ESP8266 CPU at 80MHz\r\n"
 					"cpu160 -> ESP8266 CPU at 160MHz\r\n"
-					"reset -> reset the ESP8266\r\n%s%s",FF_WebServer.standardHelpCmd().c_str(), FF_WebServer.userHelpCmd.c_str());
+					"reset -> reset the ESP8266\r\n%s%s",
+						FF_WebServer.standardHelpCmd().c_str(),
+						helpText.c_str());
 	} else if (command == "m") {
 		trace_info_P("Free Heap RAM: %d", ESP.getFreeHeap());
 	#if defined(ESP8266)

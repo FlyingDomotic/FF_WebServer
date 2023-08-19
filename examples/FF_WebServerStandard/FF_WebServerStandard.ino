@@ -38,6 +38,7 @@ String selectorValue;
 
 // Declare here used callbacks
 static CONFIG_CHANGED_CALLBACK(onConfigChangedCallback);
+static HELP_MESSAGE_CALLBACK(onHelpMessageCallback);
 static DEBUG_COMMAND_CALLBACK(onDebugCommandCallback);
 static REST_COMMAND_CALLBACK(onRestCommandCallback);
 static JSON_COMMAND_CALLBACK(onJsonCommandCallback);
@@ -68,6 +69,26 @@ CONFIG_CHANGED_CALLBACK(onConfigChangedCallback) {
 	FF_WebServer.load_user_config("checkboxValue", checkboxValue);
 	FF_WebServer.load_user_config("numberValue", numberValue);
 	FF_WebServer.load_user_config("selectorValue", selectorValue);
+}
+
+/*!
+
+	This routine is called when help message is to be printed
+
+	\param	None
+	\return	help message to be displayed
+
+*/
+
+HELP_MESSAGE_CALLBACK(onHelpMessageCallback) {
+	return PSTR(
+		"a6debug -> toggle A6 modem debug flag\r\n"
+		"a6trace -> toggle A6 modem trace flag\r\n"
+		"run -> toggle A6 modem run flag\r\n"
+		"restart -> restart A6 modem\r\n"
+		"AT or at -> send AT command\r\n"
+		"> -> send command without AT prefix\r\n"
+		"eof -> send EOF\r\n");
 }
 
 /*!
@@ -331,8 +352,6 @@ void setup() {
 	FF_WebServer.setWifiGotIpCallback(&onWifiGotIpCallback);
 	FF_WebServer.setMqttConnectCallback(&onMqttConnectCallback);
 	FF_WebServer.setMqttMessageCallback(&onMqttMessageCallback);
-	// Define additional debug commands
-	FF_WebServer.setHelpCmd("mycmd - This is my user command\r\n");
 }
 
 //	This is the main loop.
