@@ -87,6 +87,7 @@ The following parameters are used at compile time:
 	HARDWARE_WATCHDOG_PIN: (default=D4) Enable watchdog external circuit on D4 (optional)
 	HARDWARE_WATCHDOG_ON_DELAY: (default=5000) Define watchdog level on delay (in ms)
 	HARDWARE_WATCHDOG_OFF_DELAY: (default=1) Define watchdog level off delay (in ms)
+	HARDWARE_WATCHDOG_INITIAL_STATE (default 0) Define watchdog initial state
 	FF_TRACE_KEEP_ALIVE: (default=5 * 60 * 1000) Trace keep alive timer (optional)
 	FF_TRACE_USE_SYSLOG: (default=defined) Send trace messages on Syslog (optional)
 	FF_TRACE_USE_SERIAL: (default=defined) Send trace messages on Serial (optional)

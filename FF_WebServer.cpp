@@ -627,9 +627,9 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 
 	#ifdef HARDWARE_WATCHDOG_PIN
 		pinMode(HARDWARE_WATCHDOG_PIN, OUTPUT);
-		hardwareWatchdogDelay = HARDWARE_WATCHDOG_OFF_DELAY;
-		hardwareWatchdogState = false;
+		hardwareWatchdogState = HARDWARE_WATCHDOG_INITIAL_STATE;
 		digitalWrite(HARDWARE_WATCHDOG_PIN, hardwareWatchdogState ? HIGH : LOW);
+		hardwareWatchdogDelay = hardwareWatchdogState ? HARDWARE_WATCHDOG_ON_DELAY : HARDWARE_WATCHDOG_OFF_DELAY;
 	#endif
 
 	#ifdef DEBUG_FF_WEBSERVER

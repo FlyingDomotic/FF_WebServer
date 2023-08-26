@@ -13,6 +13,7 @@
 	#define HARDWARE_WATCHDOG_PIN D4						// Enable watchdog external circuit on D4 (optional)
 	#define HARDWARE_WATCHDOG_ON_DELAY 5000					// Define watchdog level on delay (in ms)
 	#define HARDWARE_WATCHDOG_OFF_DELAY 1					// Define watchdog level off delay (in ms)
+	#define HARDWARE_WATCHDOG_INITIAL_STATE 0				// Define watch dog initial state
 	#define FF_TRACE_KEEP_ALIVE (5 * 60 * 1000)				// Trace keep alive timer (optional)
 	#define FF_TRACE_USE_SYSLOG								// Send trace messages on Syslog (optional)
 	#define FF_TRACE_USE_SERIAL								// Send trace messages on Serial (optional)
