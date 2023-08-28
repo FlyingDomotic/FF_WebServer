@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.9.5"						// FF WebServer version
+#define FF_WEBSERVER_VERSION "2.9.6"						// FF WebServer version
 #ifndef PLATFORMIO											// Execute this include only for Arduino IDE
 	#include "FF_WebServerCfg.h"							// Include user #define
 #endif
@@ -191,8 +191,8 @@ public:
 	void executeCommand(const String lastCde);
 	bool mqttSubscribe (const char *subTopic, const int qos = 0);
 	bool mqttSubscribeRaw (const char *topic, const int qos = 0);
-	void mqttPublish (const char *subTopic, const char *value);
-	void mqttPublishRaw (const char *topic, const char *value);
+	void mqttPublish (const char *subTopic, const char *value, bool retain=false);
+	void mqttPublishRaw (const char *topic, const char *value, bool retain=false);
 	void connectToMqtt(void);
 	int parseUrlParams (char *queryString, char *results[][2], const int resultsMaxCt, const boolean decodeUrl);
 	String getContentType(String filename, AsyncWebServerRequest *request);

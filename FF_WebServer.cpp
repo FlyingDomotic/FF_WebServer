@@ -149,7 +149,7 @@ void AsyncFFWebServer::onMqttConnect(bool sessionPresent) {
 	// Send a "we're up" message
 	char tempBuffer[100];
 	snprintf_P(tempBuffer, sizeof(tempBuffer), PSTR("{\"state\":\"up\",\"version\":\"%s/%s\"}"), FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
-	FF_WebServer.mqttPublishRaw(FF_WebServer.mqttWillTopic.c_str(), tempBuffer);
+	FF_WebServer.mqttPublishRaw(FF_WebServer.mqttWillTopic.c_str(), tempBuffer, true);
 	if (FF_WebServer.debugFlag) trace_debug_P("LWT = %s", tempBuffer);
 	if (FF_WebServer.mqttConnectCallback) {
 		FF_WebServer.mqttConnectCallback();
@@ -247,11 +247,11 @@ bool AsyncFFWebServer::mqttSubscribeRaw (const char *topic, const int qos) {
 
 */
 
-void AsyncFFWebServer::mqttPublish (const char *subTopic, const char *value) {
+void AsyncFFWebServer::mqttPublish (const char *subTopic, const char *value, bool retain) {
 	char topic[80];
 
 	snprintf_P(topic, sizeof(topic), PSTR("%s/%s"), configMQTT_Topic.c_str(), subTopic);
-	mqttPublishRaw(topic, value);
+	mqttPublishRaw(topic, value, retain);
 }
 
 /*!
@@ -263,9 +263,9 @@ void AsyncFFWebServer::mqttPublish (const char *subTopic, const char *value) {
 	\return	none
 
 */
-void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value) {
-	uint16_t packetId = mqttClient.publish(topic, 1, true, value);
-	if (debugFlag) trace_debug_P("publish %s = %s, packedId %d", topic, value, packetId);
+void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value, bool retain) {
+	uint16_t packetId = mqttClient.publish(topic, 1, retain, value);
+	if (debugFlag) trace_debug_P("publish %s = %s, retain=%d, packedId %d", topic, value, retain, packetId);
 }
 
 // ----- Domoticz -----
@@ -367,7 +367,7 @@ void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value) {
 		char fullUrl[200];
 
 		snprintf_P(fullUrl, sizeof(fullUrl), PSTR("{\"command\": %s, \"rssi\": %d, \"battery\": %d}"), url, this->mapRSSItoDomoticz(), this->mapVccToDomoticz());
-		mqttPublishRaw("domoticz/in", fullUrl);
+		mqttPublishRaw("domoticz/in", fullUrl, true);
 	}
 #endif
 
@@ -1375,9 +1375,13 @@ void AsyncFFWebServer::handleFileList(AsyncWebServerRequest *request) {
 			output += PSTR(",");
 		}
 		bool isDir = false;
-		output += PSTR("{\"type\":\"")
-			+ (isDir) ? PSTR("dir") : PSTR("file");
-			+ PSTR("\",\"name\":\"")
+		output += PSTR("{\"type\":\"");
+		if (isDir) {
+			output += PSTR("dir");
+		} else { 
+			output += PSTR("file");
+		}
+		output += PSTR("\",\"name\":\"")
 			+ String(entry.name())
 			+ PSTR("\"}");
 		entry.close();
