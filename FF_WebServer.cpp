@@ -138,7 +138,7 @@ boolean AsyncFFWebServer::mqttTest() {
 void AsyncFFWebServer::connectToMqtt(void) {
 	// Don't try to connect if mqtt server not yet set (startup is fast ;-)
 	if (mqttInitialized) {
-		if (FF_WebServer.debugFlag) trace_debug_P("Connecting to MQTT...");
+		if (FF_WebServer.debugFlag) trace_debug_P("Connecting to MQTT...", NULL);
 		mqttClient.connect();
 	}
 }
@@ -391,7 +391,7 @@ void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value) {
 
 // Called each time system or user config is changed
 void AsyncFFWebServer::loadConfig(void) {
-	if (FF_WebServer.traceFlag) trace_info_P("Load config");
+	if (FF_WebServer.traceFlag) trace_info_P("Load config", NULL);
 	load_user_config("MQTTHost", configMQTT_Host);
 	load_user_config("MQTTPass", configMQTT_Pass);
 	load_user_config("MQTTPort", configMQTT_Port);
@@ -400,20 +400,25 @@ void AsyncFFWebServer::loadConfig(void) {
 	load_user_config("MQTTUser", configMQTT_User);
 	load_user_config("MQTTClientID", configMQTT_ClientID);
 	load_user_config("MQTTInterval", configMQTT_Interval);
-	load_user_config("SyslogServer", syslogServer);
-	load_user_config("SyslogPort", syslogPort);
+	#ifdef FF_TRACE_USE_SYSLOG
+		load_user_config("SyslogServer", syslogServer);
+		load_user_config("SyslogPort", syslogPort);
+	#endif
 }
 
 // Called each time system or user config is changed
 void AsyncFFWebServer::loadUserConfig(void) {
-	if (FF_WebServer.traceFlag) trace_info_P("Load user config");
+	if (FF_WebServer.traceFlag) trace_info_P("Load user config", NULL);
 	if (configChangedCallback) {
 		configChangedCallback();
 	}
 }
 
 // Class definition
-AsyncFFWebServer::AsyncFFWebServer(uint16_t port) : AsyncWebServer(port) {}
+AsyncFFWebServer::AsyncFFWebServer(uint16_t port) : AsyncWebServer(port) {
+	// Clear serialBuffer
+	memset(serialCommand, 0, sizeof(serialCommand));
+}
 
 // Called each second
 void AsyncFFWebServer::s_secondTick(void* arg) {
@@ -426,7 +431,7 @@ void AsyncFFWebServer::s_secondTick(void* arg) {
 	#if (AP_ENABLE_TIMEOUT > 0)
 		if (self->wifiStatus == FS_STAT_CONNECTING) {
 			if (++self->connectionTimout >= AP_ENABLE_TIMEOUT){
-				DEBUG_ERROR_P("Connection Timeout, switching to AP Mode");
+				DEBUG_ERROR_P("Connection Timeout, switching to AP Mode", NULL);
 				self->configureWifiAP();
 			}
 		}
@@ -476,7 +481,11 @@ void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 
 // Return standard help message
 String AsyncFFWebServer::standardHelpCmd() {
-	return String(PSTR("vars -> dump standard variables\r\nuser -> dump user variables\r\ndebug -> toggle debug flag\r\ntrace -> toggle trace flag\r\n"));
+	return String(PSTR("vars -> dump standard variables\r\n" 
+		"user -> dump user variables\r\n"
+		"debug -> toggle debug flag\r\n"
+		"trace -> toggle trace flag\r\n"
+		"wdt -> toggle watchdog flag\r\n"));
 }
 
 /*!
@@ -526,6 +535,12 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		this->onWiFiConnectedGotIP(data);
 	});
 
+	#ifdef FF_TRACE_USE_SYSLOG
+		syslog.server(syslogServer.c_str(), syslogPort);
+		syslog.deviceHostname(FF_WebServer.getDeviceName().c_str());
+		syslog.defaultPriority(LOG_KERN);
+	#endif
+
 	uint32_t chipId = 0;
 	// Force client id if empty or starts with "ESP_" and not right chip id
 	char tempBuffer[16];
@@ -539,6 +554,8 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	}
 
 	WiFi.hostname(_config.deviceName.c_str());
+	////WiFi.forceSleepWake();
+	////WiFi.setSleepMode(WIFI_NONE_SLEEP);
 	if (AP_ENABLE_BUTTON >= 0) {
 		if (_apConfig.APenable) {
 			configureWifiAP(); // Set AP mode if AP button was pressed
@@ -549,10 +566,13 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		configureWifi(); // Set WiFi config
 	}
 
+	unsigned long startWait = millis();
 	// Wait for Wifi up in first 10 seconds of life
-	while ((WiFi.status() != WL_CONNECTED) && (millis() <= 10000)) {
+	#if (WIFI_MAX_WAIT_SECS >=1)
+		while ((WiFi.status() != WL_CONNECTED) && ((millis() - startWait) <= (WIFI_MAX_WAIT_SECS * 1000))) {
 		yield();
 	}
+	#endif
 
 	trace_debug_P("WiFi status = %d (%sconnected)", WiFi.status(), (WiFi.status() != WL_CONNECTED) ? "NOT ":"");
 
@@ -582,12 +602,6 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		_debugActive = true;
 		_debugLevel = DEBUG_LEVEL_VERBOSE;
 		_debugShowProfiler = false;
-	#endif
-
-	#ifdef FF_TRACE_USE_SYSLOG
-		syslog.server(syslogServer.c_str(), syslogPort);
-		syslog.deviceHostname(FF_WebServer.getDeviceName().c_str());
-		syslog.defaultPriority(LOG_KERN);
 	#endif
 
 	struct rst_info *rtc_info = system_get_rst_info();
@@ -672,8 +686,10 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	AsyncWebServer::begin();
 	serverInit(); // Configure and start Web server
 
-	MDNS.begin(_config.deviceName.c_str()); // I've not got this to work. Need some investigation.
+	#ifndef DISABLE_MDNS
+		MDNS.begin(_config.deviceName.c_str());
 	MDNS.addService("http", "tcp", 80);
+	#endif
 	ConfigureOTA(_httpAuth.wwwPassword.c_str());
 	serverStarted = true;
 	loadUserConfig();
@@ -1169,7 +1185,7 @@ void AsyncFFWebServer::handle(void) {
 	#endif
 
 	#ifdef HARDWARE_WATCHDOG_PIN
-		if ((millis() - hardwareWatchdogLastUpdate) > hardwareWatchdogDelay) {
+		if ((((millis() - hardwareWatchdogLastUpdate) > hardwareWatchdogDelay)) && watchdogFlag) {
 			hardwareWatchdogLastUpdate = millis();
 			hardwareWatchdogState = ! hardwareWatchdogState;
 			digitalWrite(HARDWARE_WATCHDOG_PIN, hardwareWatchdogState ? HIGH : LOW);
@@ -1179,7 +1195,7 @@ void AsyncFFWebServer::handle(void) {
 
 	#ifdef FF_TRACE_KEEP_ALIVE
 		if ((millis() - lastTraceMessage) >= traceKeepAlive) {
-			trace_info_P("I'm still alive...");
+			trace_info_P("I'm still alive...", NULL);
 			// Note that lastTraceMessage is loaded with millis() by trace routine
 		}
 	#endif
@@ -1230,7 +1246,7 @@ void AsyncFFWebServer::configureWifi() {
 	DEBUG_VERBOSE_P("Connecting to %s", _config.ssid.c_str());
 	WiFi.begin(_config.ssid.c_str(), _config.password.c_str());
 	if (!_config.dhcp) {
-		DEBUG_ERROR_P("NO DHCP");
+		DEBUG_ERROR_P("NO DHCP", NULL);
 		WiFi.config(_config.ip, _config.gateway, _config.netmask, _config.dns);
 	}
 
@@ -1264,11 +1280,11 @@ void AsyncFFWebServer::ConfigureOTA(String password) {
 			DEBUG_VERBOSE_P("OTA Progress: %u%%", (progress / (total / 100)));
 		});
 		ArduinoOTA.onError([](ota_error_t error) {
-			if (error == OTA_AUTH_ERROR) DEBUG_ERROR_P("OTA auth Failed");
-			else if (error == OTA_BEGIN_ERROR) DEBUG_ERROR_P("OTA begin Failed");
-			else if (error == OTA_CONNECT_ERROR) DEBUG_ERROR_P("OTA connect Failed");
-			else if (error == OTA_RECEIVE_ERROR) DEBUG_ERROR_P("OTA receive Failed");
-			else if (error == OTA_END_ERROR) DEBUG_ERROR_P("OTA end Failed");
+			if (error == OTA_AUTH_ERROR) DEBUG_ERROR_P("OTA auth Failed", NULL);
+			else if (error == OTA_BEGIN_ERROR) DEBUG_ERROR_P("OTA begin Failed", NULL);
+			else if (error == OTA_CONNECT_ERROR) DEBUG_ERROR_P("OTA connect Failed", NULL);
+			else if (error == OTA_RECEIVE_ERROR) DEBUG_ERROR_P("OTA receive Failed", NULL);
+			else if (error == OTA_END_ERROR) DEBUG_ERROR_P("OTA end Failed", NULL);
 			else DEBUG_ERROR_P("OTA error %u", error);
 		});
 		DEBUG_VERBOSE_P("OTA Ready");
@@ -1477,7 +1493,7 @@ void AsyncFFWebServer::handleFileUpload(AsyncWebServerRequest *request, String f
 	if (fsUploadFile) {
 		DEBUG_VERBOSE_P("Continue upload part. Size = %u", len);
 		if (fsUploadFile.write(data, len) != len) {
-			DEBUG_ERROR_P("Write error during upload");
+			DEBUG_ERROR_P("Write error during upload", NULL);
 		} else {
 			fileSize += len;
 		}
@@ -2543,11 +2559,16 @@ void AsyncFFWebServer::executeCommand(const String command) {
 		trace_info_P("configMQTT_Interval=%d", FF_WebServer.configMQTT_Interval);
 		trace_info_P("mqttConnected()=%d", FF_WebServer.mqttClient.connected());
 		trace_info_P("mqttTest()=%d", FF_WebServer.mqttTest());
-		trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
-		trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
+		#ifdef FF_TRACE_USE_SYSLOG
+			trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
+			trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
+		#endif
 	} else if (command == "debug") {
 		FF_WebServer.debugFlag = !FF_WebServer.debugFlag;
 		trace_info_P("Debug is now %d", FF_WebServer.debugFlag);
+	} else if (command == "wdt") {
+		FF_WebServer.watchdogFlag = !FF_WebServer.watchdogFlag;
+		trace_info_P("Watchdog is now %d", FF_WebServer.watchdogFlag);
 	} else if (command == "trace") {
 		FF_WebServer.traceFlag = !FF_WebServer.traceFlag;
 		trace_info_P("Trace is now %d", FF_WebServer.traceFlag);
@@ -2585,22 +2606,22 @@ void AsyncFFWebServer::executeCommand(const String command) {
 	#endif
 	} else if (command == "v") {
 		trace_setLevel(FF_TRACE_LEVEL_VERBOSE);
-		trace_info_P("Trace level set to Verbose");
+		trace_info_P("Trace level set to Verbose", NULL);
 	} else if (command == "d") {
 		trace_setLevel(FF_TRACE_LEVEL_DEBUG);
-		trace_info_P("Trace level set to Debug");
+		trace_info_P("Trace level set to Debug", NULL);
 	} else if (command == "i") {
 		trace_setLevel(FF_TRACE_LEVEL_INFO);
-		trace_info_P("Trace level set to Info");
+		trace_info_P("Trace level set to Info", NULL);
 	} else if (command == "w") {
 		trace_setLevel(FF_TRACE_LEVEL_WARN);
-		trace_info_P("Trace level set to Warning");
+		trace_info_P("Trace level set to Warning", NULL);
 	} else if (command == "e") {
 		trace_setLevel(FF_TRACE_LEVEL_ERROR);
-		trace_info_P("Trace level set to Error");
+		trace_info_P("Trace level set to Error", NULL);
 	} else if (command == "s") {
 		if (trace_getLevel() != FF_TRACE_LEVEL_NONE) {
-			trace_info_P("Silence on");
+			trace_info_P("Silence on", NULL);
 			FF_WebServer.lastTraceLevel = trace_getLevel();			// Save current trace level
 			trace_setLevel(FF_TRACE_LEVEL_NONE);
 		} else {
@@ -2608,7 +2629,7 @@ void AsyncFFWebServer::executeCommand(const String command) {
 			trace_info_P("Silence off, level restored to %d", trace_getLevel());
 		}
 	} else if (command == "reset") {
-		trace_error_P("Reseting ESP ...");
+		trace_error_P("Reseting ESP ...", NULL);
 		delay(1000);
 		ESP.restart();
 	// End of dupplicated debugRemote commands
@@ -2633,6 +2654,9 @@ void AsyncFFWebServer::executeCommand(const String command) {
 				Serial.print(head);
 				Serial.print("-");
 				Serial.println(_message);
+				#ifdef FF_TRACE_ENABLE_SERIAL_FLUSH
+					Serial.flush();
+				#endif
 			#endif
 			// Send trace to syslog if needed
 			#ifdef FF_TRACE_USE_SYSLOG

@@ -214,6 +214,7 @@ public:
 	#endif
 	bool debugFlag = false;
 	bool traceFlag = false;
+	bool watchdogFlag = true;
 
 protected:
 	// Callbacks
@@ -284,7 +285,7 @@ protected:
 	traceLevel_t lastTraceLevel;
 
 	#if defined(SERIAL_COMMAND_PREFIX) || !defined(NO_SERIAL_COMMAND_CALLBACK)
-		char serialCommand[200] = "";						// Buffer to save serial commands
+		char serialCommand[200];							// Buffer to save serial commands
 		size_t serialCommandLen = 0;						// Buffer used lenght
 	#endif
 	// ----- Syslog -----
