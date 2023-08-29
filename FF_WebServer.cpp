@@ -180,12 +180,10 @@ void AsyncFFWebServer::onMqttUnsubscribe(uint16_t packetId) {
 // Called when an MQTT subscribed message is received
 void AsyncFFWebServer::onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
 	// Take care of (very) long payload that comes in multiple messages
-	char localPayload[250];
-	size_t localSize = sizeof(localPayload);
+	char localPayload[len+1];
 
-	if (len < localSize) localSize = len;					// Maximize len to copy
-	memset(localPayload, '\0', sizeof(localPayload));
-	strncpy(localPayload, payload, localSize);
+	strncpy(localPayload, payload, len);
+	localPayload[len] = 0;
 	if (FF_WebServer.traceFlag) trace_info_P("Received: topic %s, payload %s, len %d, localLen %d, index %d, total %d", topic, localPayload, len, localSize, index, total);
 	// Do we have a MQTT command topic defined?
 	if (FF_WebServer.configMQTT_CommandTopic != "") {
