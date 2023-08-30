@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.9.6"						// FF WebServer version
+#define FF_WEBSERVER_VERSION "2.9.7"						// FF WebServer version
 #ifndef PLATFORMIO											// Execute this include only for Arduino IDE
 	#include "FF_WebServerCfg.h"							// Include user #define
 #endif
@@ -92,6 +92,7 @@
 #define WIFI_DISCONNECT_CALLBACK_SIGNATURE std::function<void(const WiFiEventStationModeDisconnected data)> wifiDisconnectCallback
 #define WIFI_GOT_IP_CALLBACK_SIGNATURE std::function<void(const WiFiEventStationModeGotIP data)> wifiGotIpCallback
 #define MQTT_CONNECT_CALLBACK_SIGNATURE std::function<void(void)> mqttConnectCallback
+#define MQTT_DISCONNECT_CALLBACK_SIGNATURE std::function<void(AsyncMqttClientDisconnectReason disconnectReason)> mqttDisconnectCallback
 #define MQTT_MESSAGE_CALLBACK_SIGNATURE std::function<void(const char *topic, const char *payload, const AsyncMqttClientMessageProperties properties, const size_t len, const size_t index, const size_t total)> mqttMessageCallback
 
 // Define all callbacks
@@ -109,6 +110,7 @@
 #define WIFI_DISCONNECT_CALLBACK(routine) void routine(const WiFiEventStationModeDisconnected data)
 #define WIFI_GOT_IP_CALLBACK(routine) void routine(const WiFiEventStationModeGotIP data)
 #define MQTT_CONNECT_CALLBACK(routine) void routine(void)
+#define MQTT_DISCONNECT_CALLBACK(routine) void routine(AsyncMqttClientDisconnectReason disconnectReason)
 #define MQTT_MESSAGE_CALLBACK(routine) void routine(const char *topic, const char *payload, const AsyncMqttClientMessageProperties properties, const size_t len, const size_t index, const size_t total)
 
 typedef struct {
@@ -174,6 +176,7 @@ public:
 	AsyncFFWebServer& setWifiDisconnectCallback(WIFI_DISCONNECT_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setWifiGotIpCallback(WIFI_GOT_IP_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setMqttConnectCallback(MQTT_CONNECT_CALLBACK_SIGNATURE);
+	AsyncFFWebServer& setMqttDisconnectCallback(MQTT_DISCONNECT_CALLBACK_SIGNATURE);
 	AsyncFFWebServer& setMqttMessageCallback(MQTT_MESSAGE_CALLBACK_SIGNATURE);
 
 	bool save_user_config(String name, String value);
@@ -232,14 +235,15 @@ protected:
 	WIFI_DISCONNECT_CALLBACK_SIGNATURE;
 	WIFI_GOT_IP_CALLBACK_SIGNATURE;
 	MQTT_CONNECT_CALLBACK_SIGNATURE;
+	MQTT_DISCONNECT_CALLBACK_SIGNATURE;
 	MQTT_MESSAGE_CALLBACK_SIGNATURE;
 
 	// ----- MQTT -----
 	AsyncMqttClient mqttClient;
-	Ticker mqttReconnectTimer;
-	String mqttWillTopic = "";
+	unsigned long lastMqttConnectTime = 0;
 	int configMQTT_Interval = 0;
 	int configMQTT_Port = 0;
+	String mqttWillTopic = "";
 	String configMQTT_User = "";
 	String configMQTT_Pass = "";
 	String configMQTT_Host = "";
@@ -247,8 +251,6 @@ protected:
 	String configMQTT_CommandTopic = "";
 	String configMQTT_ClientID = "";
 	bool mqttInitialized = false;
-	bool wifiConnected = false;
-	bool wifiGotIp = false;
 	unsigned long lastDisconnect = 0;
 	boolean mqttTest();
 	static void onMqttConnect(bool sessionPresent);
@@ -356,7 +358,9 @@ protected:
 	void post_rest_config(AsyncWebServerRequest *request);
 	unsigned char h2int(char c);
 	boolean checkRange(String Value);
+	#if (CONNECTION_LED >= 0)
 	void flashLED(const int pin, const int times, int delayTime);
+	#endif
 	String formatBytes(size_t bytes);
 	static void s_secondTick(void* arg);
 };

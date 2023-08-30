@@ -49,10 +49,6 @@ extern trace_declare();
 
 // ----- Web server -----
 
-void connectToMqttTimer(AsyncFFWebServer* self){
-	self->connectToMqtt();
-}
-
 void AsyncFFWebServer::error404(AsyncWebServerRequest *request) {
 	if (this->error404Callback) {
 		if (this->error404Callback(request)) {
@@ -136,10 +132,14 @@ boolean AsyncFFWebServer::mqttTest() {
 
 // Connect to MQTT
 void AsyncFFWebServer::connectToMqtt(void) {
-	// Don't try to connect if mqtt server not yet set (startup is fast ;-)
-	if (mqttInitialized) {
+	// (Re)connect only if MQTT initialized, not connected to MQTT and network connected
+	if (mqttInitialized && !mqttClient.connected() && WiFi.status() == WL_CONNECTED) {
+		// Wait for 30 seconds between connection tries
+		if (((millis() - lastMqttConnectTime) >= 30000) || !lastMqttConnectTime) {
+			lastMqttConnectTime = millis();
 		if (FF_WebServer.debugFlag) trace_debug_P("Connecting to MQTT...", NULL);
 		mqttClient.connect();
+	}
 	}
 }
 
@@ -162,8 +162,8 @@ void AsyncFFWebServer::onMqttConnect(bool sessionPresent) {
 // Called on MQTT disconnection
 void AsyncFFWebServer::onMqttDisconnect(AsyncMqttClientDisconnectReason disconnectReason) {
 	if (FF_WebServer.debugFlag) trace_debug_P("Disconnected from MQTT, reason %d", disconnectReason);
-	if (WiFi.status() == WL_CONNECTED) {
-		FF_WebServer.mqttReconnectTimer.once(250, connectToMqttTimer, &FF_WebServer);
+	if (FF_WebServer.mqttDisconnectCallback) {
+		FF_WebServer.mqttDisconnectCallback(disconnectReason);
 	}
 }
 
@@ -184,7 +184,7 @@ void AsyncFFWebServer::onMqttMessage(char* topic, char* payload, AsyncMqttClient
 
 	strncpy(localPayload, payload, len);
 	localPayload[len] = 0;
-	if (FF_WebServer.traceFlag) trace_info_P("Received: topic %s, payload %s, len %d, localLen %d, index %d, total %d", topic, localPayload, len, localSize, index, total);
+	if (FF_WebServer.traceFlag) trace_info_P("Received: topic %s, payload %s, len %d, index %d, total %d", topic, localPayload, len, index, total);
 	// Do we have a MQTT command topic defined?
 	if (FF_WebServer.configMQTT_CommandTopic != "") {
 		// Is this topic the same?
@@ -462,9 +462,11 @@ String AsyncFFWebServer::formatBytes(size_t bytes) {
 	}
 }
 
-// Flash LED
-//	*** Warning *** Not asynchronous, will block CPU for delayTime * times * 2 milliseconds
-void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
+
+#if (CONNECTION_LED >= 0)
+	// Flash LED
+	//	*** Warning *** Not asynchronous, will block CPU for delayTime * times * 2 milliseconds
+	void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 	int oldState = digitalRead(pin);
 	DEBUG_VERBOSE_P("---Flash LED during %d ms %d times. Old state = %d", delayTime, times, oldState);
 
@@ -475,7 +477,8 @@ void AsyncFFWebServer::flashLED(const int pin, const int times, int delayTime) {
 		delay(delayTime);
 	}
 	digitalWrite(pin, oldState); // Turn on LED
-}
+	}
+#endif
 
 // Return standard help message
 String AsyncFFWebServer::standardHelpCmd() {
@@ -554,15 +557,15 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	WiFi.hostname(_config.deviceName.c_str());
 	////WiFi.forceSleepWake();
 	////WiFi.setSleepMode(WIFI_NONE_SLEEP);
-	if (AP_ENABLE_BUTTON >= 0) {
+	#if (AP_ENABLE_BUTTON >= 0)
 		if (_apConfig.APenable) {
 			configureWifiAP(); // Set AP mode if AP button was pressed
 		} else {
 			configureWifi(); // Set WiFi config
 		}
-	} else {
+	#else
 		configureWifi(); // Set WiFi config
-	}
+	#endif
 
 	unsigned long startWait = millis();
 	// Wait for Wifi up in first 10 seconds of life
@@ -651,22 +654,15 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	#endif // DEBUG_FF_WEBSERVER
 
 	// NTP client setup
-	if (CONNECTION_LED >= 0) {
+	#if (CONNECTION_LED >= 0)
 		pinMode(CONNECTION_LED, OUTPUT); // CONNECTION_LED pin defined as output
-	}
-	if (AP_ENABLE_BUTTON >= 0) {
+		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
+	#endif
+	#if (AP_ENABLE_BUTTON >= 0)
 		pinMode(AP_ENABLE_BUTTON, INPUT_PULLUP); // If this pin is HIGH during startup ESP will run in AP_ONLY mode. Backdoor to change WiFi settings when configured WiFi is not available.
-	}
-	//analogWriteFreq(200);
-
-	if (AP_ENABLE_BUTTON >= 0) {
 		_apConfig.APenable = !digitalRead(AP_ENABLE_BUTTON); // Read AP button. If button is pressed activate AP
 		DEBUG_VERBOSE_P("AP Enable = %d", _apConfig.APenable);
-	}
-
-	if (CONNECTION_LED >= 0) {
-		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
-	}
+	#endif
 
 	if (!_fs) // If LitleFS is not started
 		_fs->begin();
@@ -681,7 +677,7 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 #endif // DEBUG_FF_WEBSERVER
 	_secondTk.attach(1.0f, (void (*) (void*)) &AsyncFFWebServer::s_secondTick, static_cast<void*>(this)); // Task to run periodic things every second
 
-	AsyncWebServer::begin();
+	AsyncWebServer::begin();								// Start underlying AsyncWebServer class
 	serverInit(); // Configure and start Web server
 
 	#ifndef DISABLE_MDNS
@@ -693,10 +689,6 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	loadUserConfig();
 	if (mqttTest()) {
 		mqttInitialized = true;
-		// If Wifi is connected, connect to Mqtt
-		if (wifiConnected && wifiGotIp) {
-			connectToMqtt();
-		}
 	}
 	FF_WebServer.lastTraceLevel = trace_getLevel();			// Save current trace level
 	DEBUG_VERBOSE_P("END Setup");
@@ -1197,11 +1189,20 @@ void AsyncFFWebServer::handle(void) {
 			// Note that lastTraceMessage is loaded with millis() by trace routine
 		}
 	#endif
+
+	// Handle OTA
 	ArduinoOTA.handle();
+
+	// Handle time udate from NTP
 	if (updateTimeFromNTP) {
 		NTP.begin(_config.ntpServerName, _config.timezone / 10, _config.daylight);
 		NTP.setInterval(15, _config.updateNTPTimeEvery * 60);
 		updateTimeFromNTP = false;
+	}
+
+	// Handle MQTT (re)connection
+	if (!mqttClient.connected()) {						// If MQTT is not connected
+		connectToMqtt();								// Connect to MQTT
 	}
 }
 
@@ -1224,9 +1225,9 @@ void AsyncFFWebServer::configureWifiAP() {
 		WiFi.softAP(APname.c_str());
 		DEBUG_VERBOSE_P("AP Pass disabled");
 	}
-	if (CONNECTION_LED >= 0) {
+	#if (CONNECTION_LED >= 0)
 		flashLED(CONNECTION_LED, 3, 250);
-	}
+	#endif
 
 	DEBUG_ERROR_P("AP Mode enabled. SSID: %s IP: %s", WiFi.softAPSSID().c_str(), WiFi.softAPIP().toString().c_str());
 }
@@ -1293,10 +1294,10 @@ void AsyncFFWebServer::ConfigureOTA(String password) {
 // On WiFi connected
 void AsyncFFWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
 	DEBUG_VERBOSE_P("WiFi Connected: Waiting for DHCP");
-	if (CONNECTION_LED >= 0) {
+	#if (CONNECTION_LED >= 0) 
 		digitalWrite(CONNECTION_LED, LOW); // Turn LED on
 		DEBUG_VERBOSE_P("Led %d on", CONNECTION_LED);
-	}
+	#endif
 	byte mac[6];
 	WiFi.macAddress(mac);
 	if (FF_WebServer.lastDisconnect) {
@@ -1306,10 +1307,6 @@ void AsyncFFWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
 		if (FF_WebServer.traceFlag) trace_info_P("Wifi connected to %s, MAC=%2x:%2x:%2x:%2x:%2x:%2x", WiFi.SSID().c_str(), mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 	}
 	WiFi.setAutoReconnect(true);
-	FF_WebServer.wifiConnected = true;
-	if (FF_WebServer.wifiGotIp) {
-		FF_WebServer.connectToMqtt();
-	}
 	if (FF_WebServer.wifiConnectCallback) {
 		FF_WebServer.wifiConnectCallback(data);
 	}
@@ -1319,11 +1316,10 @@ void AsyncFFWebServer::onWiFiConnected(WiFiEventStationModeConnected data) {
 // On WiFi got IP
 void AsyncFFWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 	DEBUG_VERBOSE_P("GotIP Address %s, gateway %S, DNS %s", WiFi.localIP().toString().c_str(), WiFi.gatewayIP().toString().c_str(), WiFi.dnsIP().toString().c_str());
-	if (CONNECTION_LED >= 0) {
+	#if (CONNECTION_LED >= 0)
 		digitalWrite(CONNECTION_LED, LOW); // Turn LED on
 		DEBUG_VERBOSE_P("Led %d on", CONNECTION_LED);
-	}
-	FF_WebServer.wifiGotIp = true;
+	#endif
 	FF_WebServer.wifiDisconnectedSince = 0;
 	//force NTPsstart after got ip
 	if (FF_WebServer._config.updateNTPTimeEvery > 0) { // Enable NTP sync
@@ -1331,7 +1327,6 @@ void AsyncFFWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 	}
 	FF_WebServer.connectionTimout = 0;
 	FF_WebServer.wifiStatus = FS_STAT_CONNECTED;
-	FF_WebServer.connectToMqtt();
 	if (FF_WebServer.wifiGotIpCallback) {
 		FF_WebServer.wifiGotIpCallback(data);
 	}
@@ -1339,16 +1334,14 @@ void AsyncFFWebServer::onWiFiConnectedGotIP(WiFiEventStationModeGotIP data) {
 
 // On WiFi disconnected
 void AsyncFFWebServer::onWiFiDisconnected(WiFiEventStationModeDisconnected data) {
-	if (CONNECTION_LED >= 0) {
+	#if (CONNECTION_LED >= 0) 
 		digitalWrite(CONNECTION_LED, HIGH); // Turn LED off
-	}
+	#endif
 	if (FF_WebServer.wifiDisconnectedSince == 0) {
 		FF_WebServer.wifiDisconnectedSince = millis();
 	}
 	DEBUG_ERROR_P("WiFi disconnected for %d seconds", (int)((millis() - FF_WebServer.wifiDisconnectedSince) / 1000));
 	FF_WebServer.lastDisconnect = millis();
-	FF_WebServer.wifiConnected = false;
-	FF_WebServer.mqttReconnectTimer.detach(); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
 	if (FF_WebServer.wifiDisconnectCallback) {
 		FF_WebServer.wifiDisconnectCallback(data);
 	}
@@ -1412,10 +1405,10 @@ String AsyncFFWebServer::getContentType(String filename, AsyncWebServerRequest *
 // Return content of a file
 bool AsyncFFWebServer::handleFileRead(String path, AsyncWebServerRequest *request) {
 	DEBUG_VERBOSE_P("handleFileRead: %s", path.c_str());
-	if (CONNECTION_LED >= 0) {
+	#if (CONNECTION_LED >= 0) 
 		// CANNOT RUN DELAY() INSIDE CALLBACK
 		flashLED(CONNECTION_LED, 1, 25); // Show activity on LED
-	}
+	#endif
 	if (path.endsWith("/"))
 		path += PSTR("index.htm");
 	String contentType = getContentType(path, request);
@@ -2260,7 +2253,6 @@ void AsyncFFWebServer::serverInit() {
 		request->send(200, "text/json", json);
 		json = String();
 	});
-	//server.begin(); --> Not here
 	DEBUG_VERBOSE_P("HTTP server started");
 }
 
@@ -2445,6 +2437,19 @@ AsyncFFWebServer& AsyncFFWebServer::setWifiGotIpCallback(WIFI_GOT_IP_CALLBACK_SI
 */
 AsyncFFWebServer& AsyncFFWebServer::setMqttConnectCallback(MQTT_CONNECT_CALLBACK_SIGNATURE) {
 	this->mqttConnectCallback = mqttConnectCallback;
+	return *this;
+}
+
+/*!
+
+	Set MQTT disconnected callback
+
+	\param[in]	Address of user routine to be called when MQTT is disconnected
+	\return	A pointer to this class instance
+
+*/
+AsyncFFWebServer& AsyncFFWebServer::setMqttDisconnectCallback(MQTT_DISCONNECT_CALLBACK_SIGNATURE) {
+	this->mqttDisconnectCallback = mqttDisconnectCallback;
 	return *this;
 }
 

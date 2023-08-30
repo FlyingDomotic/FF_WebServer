@@ -379,6 +379,16 @@ Parameters
 Returns
 -	None
 
+### setMqttDisconnectCallback()
+
+Set MQTT disconnected callback
+
+Parameters 
+- [in]	Address of user routine to be called when MQTT is disconnected
+
+Returns
+-	None
+
 ### setMqttMessageCallback()
 
 Set MQTT message callback
@@ -460,7 +470,7 @@ Publish one MQTT subtopic (main topic will be prepended)
 Parameters
 - [in]	subTopic	subTopic to send message to (main topic will be prepended)
 - [in]	value	value to send to subTopic
-
+- {in]	retain	True if message should be retained, false else
 Returns
 - None 
 
@@ -471,6 +481,7 @@ Publish one MQTT topic (main topic will NOT be prepended)
 Parameters
 - [in]	topic	topic to send message to (main topic will NOT be prepended)
 - [in]	value	value to send to topic
+- {in]	retain	True if message should be retained, false else
 
 Returns
 - None 
