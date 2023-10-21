@@ -99,7 +99,7 @@ HELP_MESSAGE_CALLBACK(onHelpMessageCallback) {
 
 	\note	Note that standard commands are already taken in account by server and never passed here.
 
-	\param[in]	lastCmd: last debug command entered by user
+	\param[in]	debugCommand: last debug command entered by user
 	\return	none
 
 */
@@ -107,7 +107,7 @@ HELP_MESSAGE_CALLBACK(onHelpMessageCallback) {
 DEBUG_COMMAND_CALLBACK(onDebugCommandCallback) {
 	trace_info_P("Entering %s", __func__);
 	// "user" command is a standard one used to print user variables
-	if (lastCmd == "user") {
+	if (debugCommand == "user") {
 		trace_info_P("traceFlag=%d", FF_WebServer.traceFlag);
 		trace_info_P("debugFlag=%d", FF_WebServer.debugFlag);
 		// -- Add here your own user variables to print
@@ -120,7 +120,7 @@ DEBUG_COMMAND_CALLBACK(onDebugCommandCallback) {
 		// -----------
 		return true;
 	// Put here your own debug commands
-	} else if (lastCmd == "mycmd") {
+	} else if (debugCommand == "mycmd") {
 		trace_info_P("I'm inside mycmd...");
 		return true;
 	// -----------
@@ -342,7 +342,7 @@ void setup() {
 	#endif
 	// Set user's callbacks
 	FF_WebServer.setConfigChangedCallback(&onConfigChangedCallback);
-	FF_WebServer.setDebugCommandCallback(&onDebugCommandCallback);
+	FF_WebServer.setdebugCommandCallback(&onDebugCommandCallback);
 	FF_WebServer.setRestCommandCallback(&onRestCommandCallback);
 	FF_WebServer.setJsonCommandCallback(&onJsonCommandCallback);
 	FF_WebServer.setPostCommandCallback(&onPostCommandCallback);
