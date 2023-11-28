@@ -342,7 +342,7 @@ void setup() {
 	#endif
 	// Set user's callbacks
 	FF_WebServer.setConfigChangedCallback(&onConfigChangedCallback);
-	FF_WebServer.setdebugCommandCallback(&onDebugCommandCallback);
+	FF_WebServer.setDebugCommandCallback(&onDebugCommandCallback);
 	FF_WebServer.setHelpMessageCallback(&onHelpMessageCallback);
 	FF_WebServer.setRestCommandCallback(&onRestCommandCallback);
 	FF_WebServer.setJsonCommandCallback(&onJsonCommandCallback);

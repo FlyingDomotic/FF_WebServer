@@ -30,6 +30,8 @@ The following libraries are used:
 - https://github.com/marvinroger/async-mqtt-client
 - https://github.com/joaolopesf/RemoteDebug
 
+They are automatically loaded by PlatformIO, but you should install them manually if you want to compile some projects with Arduino IDE.
+
 ## Installation
 
 Clone repository somewhere on your disk.
@@ -80,66 +82,66 @@ Details of routines that are available in FF_WebServer are described at end of t
 ## Parameters at compile time
 
 The following parameters are used at compile time:
-	REMOTE_DEBUG: (default=defined) Enable telnet remote debug (optional)
-	SERIAL_DEBUG: (default=defined) Enable serial debug (optional, only if REMOTE_DEBUG is disabled)
-	SERIAL_COMMAND_PREFIX: (default=no defined) Prefix of debug commands given on Serial (i.e. `command:). No commands are allowed on Serial if not defined
-	NO_SERIAL_COMMAND_CALLBACK: (default: not defined) Disable Serial command callback
-	HARDWARE_WATCHDOG_PIN: (default=D4) Enable watchdog external circuit on D4 (optional)
-	HARDWARE_WATCHDOG_ON_DELAY: (default=5000) Define watchdog level on delay (in ms)
-	HARDWARE_WATCHDOG_OFF_DELAY: (default=1) Define watchdog level off delay (in ms)
-	HARDWARE_WATCHDOG_INITIAL_STATE (default 0) Define watchdog initial state
-	FF_TRACE_KEEP_ALIVE: (default=5 * 60 * 1000) Trace keep alive timer (optional)
-	FF_TRACE_USE_SYSLOG: (default=defined) Send trace messages on Syslog (optional)
-	FF_TRACE_USE_SERIAL: (default=defined) Send trace messages on Serial (optional)
-	INCLUDE_DOMOTICZ:(default=defined) Include Domoticz support (optional)
-	CONNECTION_LED: (default=-1) Connection LED pin, -1 to disable
-	AP_ENABLE_BUTTON: (default=-1) Button pin to enable AP during startup for configuration, -1 to disable
-	AP_ENABLE_TIMEOUT: (default=240) If the device can not connect to WiFi it will switch to AP mode after this time (Seconds, max 255),  -1 to disable
-	DEBUG_FF_WEBSERVER: (default=defined) Enable internal FF_WebServer debug
-	FF_DISABLE_DEFAULT_TRACE: (default=not defined) Disable default trace callback
-	FF_TRACE_USE_SYSLOG: (default=defined) SYSLOG to be used for trace
+	- REMOTE_DEBUG: (default=defined) Enable telnet remote debug (optional)
+	- SERIAL_DEBUG: (default=defined) Enable serial debug (optional, only if REMOTE_DEBUG is disabled)
+	- SERIAL_COMMAND_PREFIX: (default=no defined) Prefix of debug commands given on Serial (i.e. `command:). No commands are allowed on Serial if not defined
+	- NO_SERIAL_COMMAND_CALLBACK: (default: not defined) Disable Serial command callback
+	- HARDWARE_WATCHDOG_PIN: (default=D4) Enable watchdog external circuit on D4 (optional)
+	- HARDWARE_WATCHDOG_ON_DELAY: (default=5000) Define watchdog level on delay (in ms)
+	- HARDWARE_WATCHDOG_OFF_DELAY: (default=1) Define watchdog level off delay (in ms)
+	- HARDWARE_WATCHDOG_INITIAL_STATE (default 0) Define watchdog initial state
+	- FF_TRACE_KEEP_ALIVE: (default=5 * 60 * 1000) Trace keep alive timer (optional)
+	- FF_TRACE_USE_SYSLOG: (default=defined) Send trace messages on Syslog (optional)
+	- FF_TRACE_USE_SERIAL: (default=defined) Send trace messages on Serial (optional)
+	- INCLUDE_DOMOTICZ:(default=defined) Include Domoticz support (optional)
+	- CONNECTION_LED: (default=-1) Connection LED pin, -1 to disable
+	- AP_ENABLE_BUTTON: (default=-1) Button pin to enable AP during startup for configuration, -1 to disable
+	- AP_ENABLE_TIMEOUT: (default=240) If the device can not connect to WiFi it will switch to AP mode after this time (Seconds, max 255),  -1 to disable
+	- DEBUG_FF_WEBSERVER: (default=defined) Enable internal FF_WebServer debug
+	- FF_DISABLE_DEFAULT_TRACE: (default=not defined) Disable default trace callback
+	- FF_TRACE_USE_SYSLOG: (default=defined) SYSLOG to be used for trace
 
 ### Reserving Serial for your own use
 
 If you want to use Serial in your own application, and don't want WebServer to use it, you should:
-	Not define SERIAL_DEBUG
-	Not define SERIAL_COMMAND_PREFIX
-	Not define FF_TRACE_USE_SERIAL
-	Define NO_SERIAL_COMMAND_CALLBACK
+	- Not define SERIAL_DEBUG
+	- Not define SERIAL_COMMAND_PREFIX
+	- Not define FF_TRACE_USE_SERIAL
+	- Define NO_SERIAL_COMMAND_CALLBACK
 
 ## Parameters defined at run time
 
 The following parameters can be defined, either in json files before loading LittleFS file system, or through internal http server.
 
 ### In config.json:
-	ssid: Wifi SSID to connect to
-	pass: Wifi key
-	ip: this node's fix IP address (useless if DHCP is true)
-	netmask: this node's netmask (useless if DHCP is true)
-	gateway: this node's IP gateway (useless if DHCP is true)
-	dns: this node's DHCP server (useless if DHCP is true)
-	dhcp: use DHCP if true, fix IP address else
-	ntp: NTP server to use
-	NTPperiod: interval between two NTP updates (in minutes)
-	timeZone: NTP time zone (use internal HTTP server to set)
-	daylight: true if DST is used
-	deviceName: this node name
+	- ssid: Wifi SSID to connect to
+	- pass: Wifi key
+	- ip: this node's fix IP address (useless if DHCP is true)
+	- netmask: this node's netmask (useless if DHCP is true)
+	- gateway: this node's IP gateway (useless if DHCP is true)
+	- dns: this node's DHCP server (useless if DHCP is true)
+	- dhcp: use DHCP if true, fix IP address else
+	- ntp: NTP server to use
+	- NTPperiod: interval between two NTP updates (in minutes)
+	- timeZone: NTP time zone (use internal HTTP server to set)
+	- daylight: true if DST is used
+	- deviceName: this node name
 
 ### In userconfig.json:
-	MQTTClientID: MQTT client ID, used during connection to MQTT
-	MQTTUser: User to connect to MQTT server²
-	MQTTPass: Password to connect to MQTT server
-	MQTTTopic: base MQTT topic, used to set LWT topic of SMS server
-	MQTTCommandTopic: topic to read debug commands to be executed
-	MQTTHost: MQTT server to connect to
-	MQTTPort: MQTT port to connect to
-	MQTTInterval: Domoticz update interval (useless)
-	SyslogServer: syslog server to use (empty if not to be used)
-	SyslogPort: syslog port to use (empty if not to be used)
-	mqttSendTopic: MQTT topic to write received SMS to
-	mqttGetTopic: MQTT topic to read SMS messages to send
-	mqttLwtTopic: root MQTT last will topic to to read application status
-	allowedNumbers: allowed senders phone numbers, comma separated
+	- MQTTClientID: MQTT client ID, used during connection to MQTT
+	- MQTTUser: User to connect to MQTT server²
+	- MQTTPass: Password to connect to MQTT server
+	- MQTTTopic: base MQTT topic, used to set LWT topic of SMS server
+	- MQTTCommandTopic: topic to read debug commands to be executed
+	- MQTTHost: MQTT server to connect to
+	- MQTTPort: MQTT port to connect to
+	- MQTTInterval: Domoticz update interval (useless)
+	- SyslogServer: syslog server to use (empty if not to be used)
+	- SyslogPort: syslog port to use (empty if not to be used)
+	- mqttSendTopic: MQTT topic to write received SMS to
+	- mqttGetTopic: MQTT topic to read SMS messages to send
+	- mqttLwtTopic: root MQTT last will topic to to read application status
+	- allowedNumbers: allowed senders phone numbers, comma separated
 
 ## Debug commands
 

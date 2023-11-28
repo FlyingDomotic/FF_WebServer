@@ -567,9 +567,9 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		configureWifi(); // Set WiFi config
 	#endif
 
-	unsigned long startWait = millis();
 	// Wait for Wifi up in first 10 seconds of life
 	#if (WIFI_MAX_WAIT_SECS >=1)
+		unsigned long startWait = millis();
 		while ((WiFi.status() != WL_CONNECTED) && ((millis() - startWait) <= (WIFI_MAX_WAIT_SECS * 1000))) {
 		yield();
 	}
@@ -1140,9 +1140,9 @@ void AsyncFFWebServer::handle(void) {
 			if (c == '\n' || c== '\r') {
 				// Do we have some command?
 				if (serialCommandLen) {
+					String command = serialCommand;
 					#ifdef SERIAL_COMMAND_PREFIX
 						// Is command starting by prefix?
-						String command = serialCommand;
 						if (command.startsWith(PSTR(QUOTE(SERIAL_COMMAND_PREFIX)))) {
 							command = command.substring(sizeof(QUOTE(SERIAL_COMMAND_PREFIX))-1);
 							trace_info_P("Executing command %s", command.c_str());
