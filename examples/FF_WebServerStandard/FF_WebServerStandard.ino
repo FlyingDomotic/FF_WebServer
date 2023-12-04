@@ -82,13 +82,8 @@ CONFIG_CHANGED_CALLBACK(onConfigChangedCallback) {
 
 HELP_MESSAGE_CALLBACK(onHelpMessageCallback) {
 	return PSTR(
-		"a6debug -> toggle A6 modem debug flag\r\n"
-		"a6trace -> toggle A6 modem trace flag\r\n"
-		"run -> toggle A6 modem run flag\r\n"
-		"restart -> restart A6 modem\r\n"
-		"AT or at -> send AT command\r\n"
-		"> -> send command without AT prefix\r\n"
-		"eof -> send EOF\r\n");
+		"myCmd -> execute my command\r\n"
+        );
 }
 
 /*!
