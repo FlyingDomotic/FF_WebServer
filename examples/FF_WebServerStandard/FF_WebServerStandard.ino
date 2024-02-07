@@ -116,7 +116,7 @@ DEBUG_COMMAND_CALLBACK(onDebugCommandCallback) {
 		return true;
 	// Put here your own debug commands
 	} else if (debugCommand == "mycmd") {
-		trace_info_P("I'm inside mycmd...");
+		trace_info_P("I'm inside mycmd...", 0);
 		return true;
 	// -----------
 	}
