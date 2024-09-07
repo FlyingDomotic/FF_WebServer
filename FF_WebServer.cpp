@@ -2536,7 +2536,7 @@ void AsyncFFWebServer::startWifiAP(void) {
 
 // Process commands from RemoteDebug, Serial or MQTT
 void AsyncFFWebServer::executeCommand(const String command) {
-	if (command == "vars") {
+	if (command.equalsIgnoreCase("vars")) {
 		struct rst_info *rtc_info = system_get_rst_info();
 		trace_info_P("version=%s/%s", FF_WebServer.userVersion.c_str(), FF_WebServer.serverVersion.c_str());
 		trace_info_P("uptime=%s",NTP.getUptimeString().c_str());
@@ -2555,7 +2555,7 @@ void AsyncFFWebServer::executeCommand(const String command) {
 		trace_info_P("IP=%d.%d.%d.%d", ip[0], ip[1], ip[2], ip[3]);
 		byte mac[6];
 		WiFi.macAddress(mac);
-		trace_info_P("MAC=%2x:%2x:%2x:%2x:%2x:%2x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+		trace_info_P("MAC=%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
 		trace_info_P("configMQTT_Host=%s", FF_WebServer.configMQTT_Host.c_str());
 		trace_info_P("configMQTT_Port=%d", FF_WebServer.configMQTT_Port);
 		trace_info_P("configMQTT_ClientID=%s", FF_WebServer.configMQTT_ClientID.c_str());
@@ -2570,19 +2570,19 @@ void AsyncFFWebServer::executeCommand(const String command) {
 			trace_info_P("syslogServer=%s", FF_WebServer.syslogServer.c_str());
 			trace_info_P("syslogPort=%d", FF_WebServer.syslogPort);
 		#endif
-	} else if (command == "debug") {
+	} else if (command.equalsIgnoreCase("debug")) {
 		FF_WebServer.debugFlag = !FF_WebServer.debugFlag;
 		trace_info_P("Debug is now %d", FF_WebServer.debugFlag);
-	} else if (command == "wdt") {
+	} else if (command.equalsIgnoreCase("wdt")) {
 		FF_WebServer.watchdogFlag = !FF_WebServer.watchdogFlag;
 		trace_info_P("Watchdog is now %d", FF_WebServer.watchdogFlag);
-	} else if (command == "trace") {
+	} else if (command.equalsIgnoreCase("trace")) {
 		FF_WebServer.traceFlag = !FF_WebServer.traceFlag;
 		trace_info_P("Trace is now %d", FF_WebServer.traceFlag);
 	// The following commands are normally treated by remoteDebug
 	//		but as we can also use this callback for MQTT and/or Serial debug,
 	//		they should also be incorporated here.
-	} else if (command == "h" || command == "?" || command == "help") {
+	} else if (command.equalsIgnoreCase("h") || command == "?" || command.equalsIgnoreCase("help")) {
 		String helpText = "";
 		if (FF_WebServer.helpMessageCallback) {
 			helpText = (FF_WebServer.helpMessageCallback());
@@ -2601,32 +2601,32 @@ void AsyncFFWebServer::executeCommand(const String command) {
 					"reset -> reset the ESP8266\r\n%s%s",
 						FF_WebServer.standardHelpCmd().c_str(),
 						helpText.c_str());
-	} else if (command == "m") {
+	} else if (command.equalsIgnoreCase("m")) {
 		trace_info_P("Free Heap RAM: %d", ESP.getFreeHeap());
 	#if defined(ESP8266)
-		} else if (command == "cpu80") {
+		} else if (command.equalsIgnoreCase("cpu80")) {
 			system_update_cpu_freq(80);
 			trace_info_P("CPU changed to %u MHz", ESP.getCpuFreqMHz());
-		} else if (command == "cpu160") {
+		} else if (command.equalsIgnoreCase("cpu160")) {
 			system_update_cpu_freq(160);
 			trace_info_P("CPU changed to %u MHz", ESP.getCpuFreqMHz());
 	#endif
-	} else if (command == "v") {
+	} else if (command.equalsIgnoreCase("v")) {
 		trace_setLevel(FF_TRACE_LEVEL_VERBOSE);
 		trace_info_P("Trace level set to Verbose", NULL);
-	} else if (command == "d") {
+	} else if (command.equalsIgnoreCase("d")) {
 		trace_setLevel(FF_TRACE_LEVEL_DEBUG);
 		trace_info_P("Trace level set to Debug", NULL);
-	} else if (command == "i") {
+	} else if (command.equalsIgnoreCase("i")) {
 		trace_setLevel(FF_TRACE_LEVEL_INFO);
 		trace_info_P("Trace level set to Info", NULL);
-	} else if (command == "w") {
+	} else if (command.equalsIgnoreCase("w")) {
 		trace_setLevel(FF_TRACE_LEVEL_WARN);
 		trace_info_P("Trace level set to Warning", NULL);
-	} else if (command == "e") {
+	} else if (command.equalsIgnoreCase("e")) {
 		trace_setLevel(FF_TRACE_LEVEL_ERROR);
 		trace_info_P("Trace level set to Error", NULL);
-	} else if (command == "s") {
+	} else if (command.equalsIgnoreCase("s")) {
 		if (trace_getLevel() != FF_TRACE_LEVEL_NONE) {
 			trace_info_P("Silence on", NULL);
 			FF_WebServer.lastTraceLevel = trace_getLevel();			// Save current trace level
@@ -2635,7 +2635,7 @@ void AsyncFFWebServer::executeCommand(const String command) {
 			trace_setLevel(FF_WebServer.lastTraceLevel);
 			trace_info_P("Silence off, level restored to %d", trace_getLevel());
 		}
-	} else if (command == "reset") {
+	} else if (command.equalsIgnoreCase("reset")) {
 		trace_error_P("Reseting ESP ...", NULL);
 		delay(1000);
 		ESP.restart();
