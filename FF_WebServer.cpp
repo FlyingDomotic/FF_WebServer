@@ -414,8 +414,10 @@ void AsyncFFWebServer::loadUserConfig(void) {
 
 // Class definition
 AsyncFFWebServer::AsyncFFWebServer(uint16_t port) : AsyncWebServer(port) {
+	#if defined(SERIAL_COMMAND_PREFIX) || !defined(NO_SERIAL_COMMAND_CALLBACK)
 	// Clear serialBuffer
 	memset(serialCommand, 0, sizeof(serialCommand));
+    #endif
 }
 
 // Called each second
