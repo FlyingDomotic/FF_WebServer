@@ -718,7 +718,7 @@ bool AsyncFFWebServer::load_config() {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUG_VERBOSE_P("JSON file size: %d bytes", size);
-	DynamicJsonDocument jsonDoc(1024);
+	JsonDocument jsonDoc;
 	auto error = deserializeJson(jsonDoc, buf.get());
 	if (error) {
 		DEBUG_ERROR_P("Failed to parse %s. Error: %s", CONFIG_FILE, error.c_str());
@@ -776,30 +776,30 @@ void AsyncFFWebServer::defaultConfig() {
 bool AsyncFFWebServer::save_config() {
 	//flag_config = false;
 	DEBUG_VERBOSE_P("Save config");
-	DynamicJsonDocument jsonDoc(512);
+	JsonDocument jsonDoc;
 
 	jsonDoc["ssid"] = _config.ssid;
 	jsonDoc["pass"] = _config.password;
 
-	JsonArray jsonip = jsonDoc.createNestedArray("ip");
+	JsonArray jsonip = jsonDoc["ip"].to<JsonArray>();
 	jsonip.add(_config.ip[0]);
 	jsonip.add(_config.ip[1]);
 	jsonip.add(_config.ip[2]);
 	jsonip.add(_config.ip[3]);
 
-	JsonArray jsonNM = jsonDoc.createNestedArray("netmask");
+	JsonArray jsonNM = jsonDoc["netmask"].to<JsonArray>();
 	jsonNM.add(_config.netmask[0]);
 	jsonNM.add(_config.netmask[1]);
 	jsonNM.add(_config.netmask[2]);
 	jsonNM.add(_config.netmask[3]);
 
-	JsonArray jsonGateway = jsonDoc.createNestedArray("gateway");
+	JsonArray jsonGateway = jsonDoc["gateway"].to<JsonArray>();
 	jsonGateway.add(_config.gateway[0]);
 	jsonGateway.add(_config.gateway[1]);
 	jsonGateway.add(_config.gateway[2]);
 	jsonGateway.add(_config.gateway[3]);
 
-	JsonArray jsondns = jsonDoc.createNestedArray("dns");
+	JsonArray jsondns = jsonDoc["dns"].to<JsonArray>();
 	jsondns.add(_config.dns[0]);
 	jsondns.add(_config.dns[1]);
 	jsondns.add(_config.dns[2]);
@@ -886,7 +886,7 @@ bool AsyncFFWebServer::load_user_config(String name, String &value) {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUG_VERBOSE_P("JSON file size: %d bytes", size);
-	DynamicJsonDocument jsonDoc(1024);
+	JsonDocument jsonDoc;
 	auto error = deserializeJson(jsonDoc, buf.get());
 	if (error) {
 		DEBUG_ERROR_P("Failed to parse %s. Error: %s", USER_CONFIG_FILE, error.c_str());
@@ -941,7 +941,7 @@ bool AsyncFFWebServer::save_user_config(String name, String value) {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUG_VERBOSE_P("Read JSON file size: %d bytes", size);
-	DynamicJsonDocument jsonDoc(1024);
+	JsonDocument jsonDoc;
 	auto error = deserializeJson(jsonDoc, buf.get());
 
 	if (error) {
@@ -1084,7 +1084,7 @@ bool AsyncFFWebServer::loadHTTPAuth() {
 	configFile.readBytes(buf.get(), size);
 	configFile.close();
 	DEBUG_VERBOSE_P("JSON secret file size: %d bytes", size);
-	DynamicJsonDocument jsonDoc(256);
+	JsonDocument jsonDoc;
 	auto error = deserializeJson(jsonDoc, buf.get());
 
 	if (error) {
@@ -1804,7 +1804,7 @@ void AsyncFFWebServer::send_wwwauth_configuration_html(AsyncWebServerRequest *re
 bool AsyncFFWebServer::saveHTTPAuth() {
 	//flag_config = false;
 	DEBUG_VERBOSE_P("Save secret");
-	DynamicJsonDocument jsonDoc(256);
+	JsonDocument jsonDoc;
 
 	jsonDoc["auth"] = _httpAuth.auth;
 	jsonDoc["user"] = _httpAuth.wwwUsername;
