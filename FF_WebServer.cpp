@@ -653,6 +653,9 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 		#ifdef FF_TRACE_USE_SERIAL
 			Serial.setDebugOutput(true);
 		#endif
+		#ifdef FF_TRACE_USE_SERIAL1
+			Serial1.setDebugOutput(true);
+		#endif
 	#endif // DEBUG_FF_WEBSERVER
 
 	// NTP client setup
@@ -2652,7 +2655,7 @@ void AsyncFFWebServer::executeCommand(const String command) {
 #ifndef FF_DISABLE_DEFAULT_TRACE
 	// Default trace callback
 	trace_callback(AsyncFFWebServer::defaultTraceCallback) {
-		#if defined(FF_TRACE_USE_SYSLOG) || defined(FF_TRACE_USE_SERIAL) || defined(REMOTE_DEBUG) || defined(SERIAL_DEBUG)
+		#if defined(FF_TRACE_USE_SYSLOG) || defined(FF_TRACE_USE_SERIAL) || defined(FF_TRACE_USE_SERIAL1) || defined(REMOTE_DEBUG) || defined(SERIAL_DEBUG)
 			// Compose header with file, function, line and severity
 			const char levels[] = "NEWIDV";
 			char head[80];
@@ -2665,6 +2668,14 @@ void AsyncFFWebServer::executeCommand(const String command) {
 				Serial.println(_message);
 				#ifdef FF_TRACE_ENABLE_SERIAL_FLUSH
 					Serial.flush();
+				#endif
+			#endif
+			#ifdef FF_TRACE_USE_SERIAL1
+				Serial1.print(head);
+				Serial1.print("-");
+				Serial1.println(_message);
+				#ifdef FF_TRACE_ENABLE_SERIAL_FLUSH
+					Serial1.flush();
 				#endif
 			#endif
 			// Send trace to syslog if needed
