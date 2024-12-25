@@ -21,7 +21,7 @@
 #ifndef _FFWEBSERVER_hpp
 #define _FFWEBSERVER_hpp
 
-#define FF_WEBSERVER_VERSION "2.9.9"						// FF WebServer version
+#define FF_WEBSERVER_VERSION "2.9.10"						// FF WebServer version
 #ifndef PLATFORMIO											// Execute this include only for Arduino IDE
 	#include "FF_WebServerCfg.h"							// Include user #define
 #endif
@@ -37,7 +37,9 @@
 #include <TimeLib.h>
 #include <Ticker.h>
 #include <ESP8266WiFi.h>
-#include <ESP8266mDNS.h>
+#ifndef DISABLE_MDNS
+    #include <ESP8266mDNS.h>
+#endif
 #include <ArduinoOTA.h>
 #include <ESPAsyncTCP.h>									// https://github.com/me-no-dev/ESPAsyncTCP
 #include <NtpClientLib.h>									// https://github.com/gmag11/NtpClient

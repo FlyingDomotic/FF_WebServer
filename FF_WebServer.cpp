@@ -262,8 +262,10 @@ void AsyncFFWebServer::mqttPublish (const char *subTopic, const char *value, boo
 
 */
 void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value, bool retain) {
+	if (mqttInitialized && mqttClient.connected() && WiFi.status() == WL_CONNECTED) {
 	uint16_t packetId = mqttClient.publish(topic, 1, retain, value);
 	if (debugFlag) trace_debug_P("publish %s = %s, retain=%d, packedId %d", topic, value, retain, packetId);
+    }
 }
 
 // ----- Domoticz -----
