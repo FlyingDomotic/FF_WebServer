@@ -262,10 +262,8 @@ void AsyncFFWebServer::mqttPublish (const char *subTopic, const char *value, boo
 
 */
 void AsyncFFWebServer::mqttPublishRaw (const char *topic, const char *value, bool retain) {
-	if (mqttInitialized && mqttClient.connected() && WiFi.status() == WL_CONNECTED) {
 	uint16_t packetId = mqttClient.publish(topic, 1, retain, value);
 	if (debugFlag) trace_debug_P("publish %s = %s, retain=%d, packedId %d", topic, value, retain, packetId);
-    }
 }
 
 // ----- Domoticz -----
@@ -541,9 +539,10 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	});
 
 	#ifdef FF_TRACE_USE_SYSLOG
+        if (syslogServer != "") {
 		syslog.server(syslogServer.c_str(), syslogPort);
-		syslog.deviceHostname(FF_WebServer.getDeviceName().c_str());
-		syslog.defaultPriority(LOG_KERN);
+            syslog.defaultPriority(LOG_LOCAL0);
+        }
 	#endif
 
 	uint32_t chipId = 0;
@@ -579,6 +578,8 @@ void AsyncFFWebServer::begin(FS* fs, const char *version) {
 	}
 	#endif
 
+    // The following let time for WiFi to properly initialize and stabilize, allowing then syslog to work immediatly
+	delay(1000);
 	trace_debug_P("WiFi status = %d (%sconnected)", WiFi.status(), (WiFi.status() != WL_CONNECTED) ? "NOT ":"");
 
 	if (_config.updateNTPTimeEvery > 0) { // Enable NTP sync
@@ -2682,8 +2683,24 @@ void AsyncFFWebServer::executeCommand(const String command) {
 			#endif
 			// Send trace to syslog if needed
 			#ifdef FF_TRACE_USE_SYSLOG
+                if (FF_WebServer.syslogServer != "") {
 				syslog.deviceHostname(head);
-				syslog.log(_message);
+                    syslog.appName(FF_WebServer.getDeviceName().c_str());
+                    switch(_level) {
+                        case FF_TRACE_LEVEL_ERROR:
+                            syslog.log(LOG_ERR, _message);
+                            break;
+                        case FF_TRACE_LEVEL_WARN:
+                            syslog.log(LOG_WARNING, _message);
+                            break;
+                        case FF_TRACE_LEVEL_INFO:
+                            syslog.log(LOG_INFO, _message);
+                            break;
+                        default:
+                            syslog.log(LOG_DEBUG, _message);
+                            break;
+                    }
+                }
 			#endif
 			// Send trace to debug if needed
 			#if defined(REMOTE_DEBUG) || defined(SERIAL_DEBUG)
